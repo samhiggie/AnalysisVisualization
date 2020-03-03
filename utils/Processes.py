@@ -25,7 +25,7 @@ SMHTT["vbfH125.root"]=["qqH"]
 #SMHTT["WH"]="WH125.root"
 
 #backgrounds 
-SMHTT["ZJETS.root"]=["ZTT,ZL"]
+SMHTT["ZJETS.root"]=["ZTT","ZL"]
 SMHTT["FF.root"]=["jetFakes"]
 SMHTT["DiBoson.root"]=["VVL","VVT"]
 SMHTT["TT.root"]=["TTL","TTT"]

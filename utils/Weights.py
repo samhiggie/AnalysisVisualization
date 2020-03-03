@@ -13,10 +13,15 @@
 '''
 #########################
 CommonWeights={}
-CommonWeights["lumi"]=[59740]
-CommonWeights["weights"]=["__WEIGHT__*GENWEIGHT*puweight"]
+CommonWeights["lumi"]=["59740"]
+CommonWeights["mcweight"]=["__WEIGHT__*GENWEIGHT*puweight"]
 
 
 SMHTTWeights={}
-
+SMHTTWeights["data_obs"]=[""]
+SMHTTWeights["TTT"]=CommonWeights["mcweight"]
+SMHTTWeights["TTL"]=CommonWeights["mcweight"]
+SMHTTWeights["ZTT"]=CommonWeights["mcweight"]
+SMHTTWeights["ZTL"]=CommonWeights["mcweight"]
+SMHTTWeights["ZL"]=CommonWeights["mcweight"]
 

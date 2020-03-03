@@ -34,4 +34,3 @@ vbftestmela.name = "vbfmela"
 vbftestmela.variables = [["m_sv","mjj","mela"],["njets"]]
 vbftestmela.cuts = "mt_1>50.0&&njets>=2"   #stuff like this
 vbftestmela.binning = [[[50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0],[0.0,50.0,100.0,200.0,300.0,500.0],[0.0,4.0,5.0]],[0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0]]
-
