@@ -5,6 +5,7 @@
 * File Name : Processes.py
 
 * Purpose : Stores dictionaries for analysis signal and background files 
+            THIS DRIVES ALL HISTOGRAMS STORED! AND IN PLOTS FOR THE STACK
 
 * Creation Date : 04-02-2020
 
@@ -12,6 +13,39 @@
 
 '''
 #########################
+import ROOT
+from Parametrization import Process
+
+HAA = {}
+#data 
+#HAA["muDATA.root"] = ["data_obs"]
+#This is a list of Process objects
+#HAA={}
+#a20 = Process()
+#a20.name = "a20"
+#a20.file = "all_HToAAToMuMuTauTau_M20_001.root"
+#a20.classification = "signal"
+#HAA[a20.file] = a20
+
+#signals
+HAA["all_HToAAToMuMuTauTau_M20_001.root"]=["a20"]
+#HAA["ggH125.root"]=["ggH"]
+#HAA["vbfH125.root"]=["qqH"]
+#HAA["ZH"]="ggH125.root"
+#HAA["WH"]="WH125.root"
+
+#backgrounds 
+#HAA["ZJETS.root"]=["ZTT","ZL"]
+#HAA["FF.root"]=["jetFakes"]
+#HAA["DiBoson.root"]=["VVL","VVT"]
+#HAA["TT.root"]=["TTL","TTT"]
+#HAA["W"]="WJETS.root"
+
+
+
+
+
+
 
 SMHTT = {}
 #data 
