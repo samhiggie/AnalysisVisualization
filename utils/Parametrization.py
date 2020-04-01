@@ -13,7 +13,7 @@
 '''
 #########################
 
-class Params():
+class Category():
     def __init__(self):
         self.name = []
         self.variables = []
@@ -23,6 +23,14 @@ class Params():
         
 class Process():
     def __init__(self):
-        self.name = ""
+        #Nickname corresponds to CSV input file ... wil be the unique identifier
+        self.nickname = ""
+        self.plotname = ""
+        #what are some important weights or scale factors NOT COMMON to all processes????
+        #xsec, nevents, 
+        self.weights = {}
+        #cuts per process... overrides the plot name ... and we loop over collection of these in main 
+        self.cuts = {}
         self.file = ""
         self.classification = ""
+        self.color = []

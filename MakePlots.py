@@ -91,7 +91,9 @@ def normalize_hist(h):
 def assignColor(h): 
     name = h.GetName()
     if "a15" in name or "a20" in name or "a25" in name or "a30" in name or "a35" in name or "a40" in name: 
-        h.SetFillColor(ROOT.kRed)
+        h.SetLineColor(ROOT.kRed)
+        h.SetFillColor(0)
+        h.SetLineWidth(4)
     if "ZL" in name: 
         h.SetFillColor()
     if "ZTT" in name: 
