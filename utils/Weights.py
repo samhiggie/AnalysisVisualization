@@ -14,7 +14,7 @@
 #########################
 CommonWeights={}
 #CommonWeights["lumi"]=["59740"]
-CommonWeights["lumi"]=["35900"]#pb^-1
+CommonWeights["lumi"]=[35900]#pb^-1
 #CommonWeights["lumi"]=["1"]#pb^-1
 #CommonWeights["mcweight"]=["__WEIGHT__*GENWEIGHT*puweight"]
 #CommonWeights["mcweight"]=["LHEweight*weight"]

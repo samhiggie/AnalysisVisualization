@@ -42,12 +42,15 @@ HAA_Inc_mmmt = Category()
 HAA_Inc_mmmt.name = "mmmt_inclusive"
 #idDeepTau2017v2p1VSmu_4>0&&idDeepTau2017v2p1VSe_4>0&&
 #HAA_Inc_mmmt.cuts["preselection"]= "pt_1>21&&pt_2>21&&pt_3>21&&pt_4>30&&mediumId_1>0&&mediumId_2>0&&mediumId_3>0&&iso_1<0.15&&iso_2<0.15&&iso_3<0.15&&idDeepTau2017v2p1VSjet_4>0"   #
-HAA_Inc_mmmt.cuts["preselection"]= "pt_1>5.&&pt_2>5.&&pt_3>5.&&pt_4>18.5&&abs(eta_4)<2.3&&idDeepTau2017v2p1VSjet_4>0&&idDeepTau2017v2p1VSmu_4>0&&idDeepTau2017v2p1VSe_4>0"   #
+#HAA_Inc_mmmt.cuts["preselection"]= pt_1>5.&&pt_2>5.&&pt_3>5.&&pt_4>18.5&&abs(eta_4)<2.3&&idDeepTau2017v2p1VSjet_4>0&&idDeepTau2017v2p1VSmu_4>0&&idDeepTau2017v2p1VSe_4>0"   #
+HAA_Inc_mmmt.cuts["preselection"]= [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],["eta_4","absl",2.3],["idDeepTau2017v2p1VSjet_4",">",0],["idDeepTau2017v2p1VSmu_4",">",0],["idDeepTau2017v2p1VSe_4",">",0]]   #
 #HAA_Inc_mmmt.cuts["categoryCuts"]= "cat==6&&AMass<120.0"   #
-HAA_Inc_mmmt.cuts["categoryCuts"]= "cat==6"   #
+HAA_Inc_mmmt.cuts["categoryCuts"]= [["cat","==",6]]   #
 #Trigger bit mapping... bits = [e.HLT_Ele27_eta2p1_WPTight_Gsf, e.HLT_Ele25_eta2p1_WPTight_Gsf, e.HLT_IsoMu24, e.HLT_IsoTkMu24, e.HLT_IsoMu27,e.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ, e.HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ,e.HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ]
 #2 -> 4 IsoMu24 ,  3 -> 8 IsoTkMu24  , 4 -> 16 IsoMu27  , 5 -> 32  e.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
-HAA_Inc_mmmt.cuts["trigger"]= "((triggerWord&&4)||(triggerWord&&8)||(triggerWord&&16)||(triggerWord&&32))"   #
+#HAA_Inc_mmmt.cuts["trigger"]= [[["triggerWord","band",4],"||",["triggerWord","band",8],"||",["triggerWord","band",16],"||",["triggerWord","band",32]]]   #
+#if the statements are nested like this ... they are ors 
+HAA_Inc_mmmt.cuts["trigger"]=[[["OR"],["triggerWord","band",4],["triggerWord","band",8],["triggerWord","band",16],["triggerWord","band",32]]]   #
 
 HAA_Inc_mmmt.variables = [["m_vis"],
 ["AMass"],
