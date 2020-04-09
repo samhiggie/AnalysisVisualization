@@ -3,9 +3,9 @@
 #Author: Sam Higginbotham
 '''
 
-* File Name : MakeDataCards.py
+* File Name : MakeDataCards_HAA_Event.py
 
-* Purpose : For Datacard creation. Root file containing histograms that can be used with Combine.
+* Purpose : For Datacard creation. Root file containing histograms that can be used with Combine. This will skim the events 
 
 * Creation Date : 04-02-2020
 
@@ -27,24 +27,95 @@ import csv
 
 
 #Setting up operators for cut string iterator ... very useful
-ops = { "==": operator.eq, ">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le, "band": operator.and_,"bor":operator.or_}
+ops = { "==": operator.eq, "!=": operator.eq, ">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le, "band": operator.and_,"bor":operator.or_}
+
+def subArrayLogic(evt,array):
+    boo=ops[array[1]](getattr(evt,array[0],None),array[2])
+    return boo
 
 def cutStringBool(evt,cuts):
     survive=False
     #print "cuts",cuts
     for cut in cuts:
+
+        #recursive case ... keep er going...  
+        if type(cut[0][0])==type([0]):
+            sruvive=cutStringBool(evt,cuts)
+
         #print "single cut",cut,"  len ",len(cut)
+        #Here there are cut types ... everything will be product ands... but these are the subtypes 
+        # "OR" so we can AND(OR)AND(OR) 
         if cut[0][0]=="OR":
             tempbool=False
             for oe in range(1,len(cut)):
                 #print cut[oe]
                 if ops[cut[oe][1]](getattr(evt,cut[oe][0],None),cut[oe][2]):
                     tempbool=True
+                    break
                     #print "passed trigger "
                 
             survive=tempbool    
+            if not survive:
+                break
+            else: continue
+        # "EQT" does a particular set of variables when applied in a function pass a cut?
+        if cut[0][0]=="EQT":
+            #print cut[0]
+            for i,var in enumerate(cut[1]):
+                if cut[2]=="mult":
+                    if i==0:
+                        tempvar = 1.0
+                    tempvar = tempvar * getattr(evt,var,None)
+                if cut[2]=="div":
+                    if(i==0 and getattr(evt,var,None)!=0):
+                        tempvar = 1.0
+                    tempvar = tempvar / getattr(evt,var,None)
+                if cut[2]=="add":
+                    if(i==0):
+                        tempvar = 0.0
+                    tempvar = tempvar+getattr(evt,var,None)
+                if cut[2]=="sub":
+                    if(i==0):
+                        tempvar = 0.0
+                    tempvar = tempvar - getattr(evt,var,None)
+
+            if ops[cut[3]](tempvar,cut[4]):
+                survive=True
+            if not survive:
+                break
+            else: continue 
+        # "IF" statments in order to make cuts after variables in an event pass a selection criteria ... "THEN" included only for asethetics 
+        if cut[0][0]=="IF":
+            tempbool=True
+            for i,state in enumerate(cut[1]):
+                #if not ops[state[1]](getattr(evt,state[0],None),state[2]):
+                #print state,ops[state[1]](getattr(evt,state[0],None),state[2])
+                if ops[state[1]](getattr(evt,state[0],None),state[2]):
+                    tempbool=True
+                else:
+                    tempbool=False
+                    break
+            if tempbool==True:
+                for i,state in enumerate(cut[3]):
+                    #print state,ops[state[1]](getattr(evt,state[0],None),state[2]),getattr(evt,state[0],None)
+                    if ops[state[1]](getattr(evt,state[0],None),state[2]):
+                        survive=True 
+                    else:
+                        survive=False 
+                        break
+            else:
+                #print "no if statement soo no cuts"
+                continue 
+
+            if not survive:
+                break
+            else: continue 
+
+        # Default CASE! does it pass the cut?
+        # should  provide this as separate function??? because the absg does exist above... 
         else:
             statement = cut[1]
+            #print statement
             if statement=="absg":
                 if ops["<"](getattr(evt,cut[0],None),(-1 * cut[2])): 
                     survive=True
@@ -52,20 +123,24 @@ def cutStringBool(evt,cuts):
                     survive=True 
                 else: 
                     survive=False
+                    break
                     #print "failed ",cut
             if statement=="absl":
                 if (ops[">"](getattr(evt,cut[0],None),(-1 * cut[2])) and ops["<"](getattr(evt,cut[0],None),cut[2])): 
                     survive=True
                 else: 
                     survive=False
+                    break
+                    
                     #print "failed ",cut
             else:  
                 if ops[statement](getattr(evt,cut[0],None),cut[2]):
                     survive=True
                     #print "passed cut",cut
-                    continue 
                 else:
                     survive=False
+                    #return survive
+                    break
                     #print "failed ",cut
         
     return survive 
@@ -183,64 +258,16 @@ def createUnrolledHistogram(cat,numvar,filelist,process,variable,weight,filedict
     masterUnroll.Write(masterUnroll.GetName(),ROOT.TObject.kOverwrite)
     return
 
-def createHistogram(cat,numvar,filelist,processObj,process,variable,weight,filedict):
-    filedict[variable[0]].cd()
-    filedict[variable[0]].mkdir(cat.name)
-    filedict[variable[0]].cd(cat.name)
 
-    bins = cat.binning[numvar]
-    tmpbin = np.asarray(cat.binning[numvar])
-   
-    if filedict[variable[0]].Get(cat.name).GetListOfKeys().Contains(str(process)):
-        tmp = ROOT.TH1D("tmp","tmp",len(tmpbin)-1,tmpbin)
-        real = filedict[variable[0]].Get(cat.name).Get(str(process))
-    else:
-        tmp = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-
-    #Cuts
-    procut = processObj.cuts[process]
-
-    if procut=="":
-        allcuts = "("+str(cat.cuts["categoryCuts"])+"&&"+str(cat.cuts["preselection"])+"&&"+str(cat.cuts["trigger"])+")"
-        #print "Process doesn't have extra cut?" 
-    else:
-        allcuts = "("+str(cat.cuts["categoryCuts"])+"&&"+str(cat.cuts["preselection"])+"&&"+str(cat.cuts["trigger"])+"&&"+str(procut)+")"
-
-    #Weights addition to common
-    weightfinal = weight
-    weightDict = processObj.weights
-    for scalefactor in weightDict.keys():
-        if scalefactor == "xsec":
-            weightfinal =  weightfinal+"*"+str(weightDict[scalefactor])
-        elif scalefactor == "nevents":
-            weightfinal =  weightfinal+"*"+"("+"1/"+str(weightDict[scalefactor])+")"
-        else: 
-            weightfinal = weightfinal+"*"+str(weightDict[scalefactor])
-    
-    #capping off the weight for saftey in draw method
-    weightfinal = "("+weightfinal+")"
-    
-    print process,"  the cuts and weight ",allcuts+"*"+weightfinal
-
-    #tell of histogram already exits in the root output file - if so then add... 
-    if filedict[variable[0]].Get(cat.name).GetListOfKeys().Contains(str(process)):
-        tmp = ROOT.TH1D("tmp","tmp",len(tmpbin)-1,tmpbin)
-        tree.Draw(str(variable[0])+">>tmp",allcuts+"*"+weightfinal)
-        print "adding temp histo to process ... will gain ",tmp.GetEntries(),"   entries"
-        real.Add(tmp)
-        real.Write(real.GetName(),ROOT.TObject.kOverwrite)
-        
-    else:
-        tmp = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-        tree.Draw(str(variable[0])+">>"+str(process),allcuts+"*"+weightfinal)
-        tmp.Write(tmp.GetName(),ROOT.TObject.kOverwrite)
-
-    return
-
-
-def calculateHistos(tree,allcats,processObj,nickname,histodict,commonweight):
+def calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstring,commonweight):
+            
 
     #do I need to use branches?
+    #need a temp variable per new variable to fill each event
+    newVarVals={}
+    for cats in allcats:
+        for var in cats.newvariables.keys():
+            newVarVals[var]=0.0
 
     
     for ievt, evt in enumerate(tree):
@@ -250,45 +277,67 @@ def calculateHistos(tree,allcats,processObj,nickname,histodict,commonweight):
         if ievt % 1000 == 0:
             print "processing event ",ievt
         
-        #fill histograms
-        #FillHistograms(ievt,evt,allcats,filedict)
-        
-        
+        #this won't work... how do I update variables per event?? just make a new tree and shit?? but that is basically nanoAOD!
+        #evt.pt_1 = evt.pt_1 +30.0
+        #new variable mll - mtt
+        #mllmtt = evt.mll - evt.mtt 
+        #mllmtt = getattr(evt,"mll",None) - getattr(evt,"m_vis",None)
+        #newVars["mll-mtt"]= getattr(evt,"mll",None) - getattr(evt,"m_vis",None)
+        #newVars["mll-mtt"]= fun["-"][getattr(evt,"mll",None),getattr(evt,"m_vis",None)]
+
+        weightfinal = commonweight
+        #find weight from string
+        wtstring = 1.0
+        for wts in weightstring:
+            wtstring = wtstring * abs(getattr(evt,wts[0],None))
+        #weightfinal = weightfinal * wtstring
+        #fill histograms 
         for cat in allcats:
-            for variable in cat.variables:
-                for process in processObj.cuts.keys():
-                    #Cuts
-                    procut = processObj.cuts[process]
 
-                    #Weights addition to common
-                    weightfinal = commonweight
-                    weightDict = processObj.weights
-                    for scalefactor in weightDict.keys():
-                        if scalefactor == "nevents":
-                            #weightfinal =  weightfinal+"*"+"("+"1/"+str(weightDict[scalefactor])+")"
-                            weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
-                        else:
-                            #weightfinal =  weightfinal+"*"+str(weightDict[scalefactor])
-                            weightfinal =  weightfinal * float(weightDict[scalefactor])
-                        
-                    #combining all the cuts 
-                    cuts = []
-                    for cuttype in cat.cuts.keys():
-                        for cut in cat.cuts[cuttype]:
-                            cuts.append(cut)
-                    #cuts.append(procut)
+            for process in processObj.cuts.keys():
+                #Cuts
+                procut = processObj.cuts[process]
 
-                    #Operator expansion cut string
-                    survive=cutStringBool(evt,cuts)
+                #Weights addition to common
+                weightDict = processObj.weights
+                for scalefactor in weightDict.keys():
+                    if scalefactor == "nevents":
+                        #weightfinal =  weightfinal+"*"+"("+"1/"+str(weightDict[scalefactor])+")"
+                        weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
+                    else:
+                        #weightfinal =  weightfinal+"*"+str(weightDict[scalefactor])
+                        weightfinal =  weightfinal * float(weightDict[scalefactor])
                     
-                  
+                #combining all the cuts 
+                cuts = []
+                for cuttype in cat.cuts.keys():
+                    for cut in cat.cuts[cuttype]:
+                        cuts.append(cut)
+                #cuts.append(procut)
+                #print "allcuts   ",cuts
+
+                #Operator expansion cut string
+                survive=cutStringBool(evt,cuts)
+                
+                if survive==True:
+
+                    #fill the new variables 
+                    for var in newVarVals.keys():
+                        #print cat.newvariables[var][1]
+                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][1]))
+
+                    #fill the current variables
+                    for variable in cat.variables:
+                        #move this outside variables
       
-                    if survive==True:
-                        #obtaining the right variable...
+                        #obtaining the right variable... WHAT about changed variables in the event!!?
                         val = getattr(evt,variable[0],None)
                         filedict[variable[0]].cd()
                         filedict[variable[0]].cd(cat.name)
-                        histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                        #Fix the weight problem!!!
+                        #histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                        histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
+                
 
 
     return
@@ -321,8 +370,12 @@ if __name__ == "__main__":
     #args = parser.parse_args()
     #loader = 
     categories = []
+
     #gather all the analysis categories
     from utils.Categories import allcats
+    
+    #gather functions for computing variables in the event loop
+    from utils.functions import functs
 
 
     #This is where the plotting takes place!
@@ -351,8 +404,11 @@ if __name__ == "__main__":
             sampleDict[row[0]] = [row[1],row[2],row[3],row[4],row[5],row[6]]
 
     print "initializing histograms"
+    
+
     filedict = {}
     histodict = {}
+    newhistodict = {}
     for cat in allcats:
         numvar=0
         for variable in cat.variables:
@@ -379,10 +435,38 @@ if __name__ == "__main__":
                         histodict[variable[0]+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
                         histodict[variable[0]+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
             numvar=numvar+1
+    #gathering new varibles
+    for cat in allcats:
+        numvar=0
+        for variable in cat.newvariables.keys():
+
+            #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
+            filedict[variable]=ROOT.TFile.Open(str(variable)+".root","RECREATE")
+            #print "on variable ",variable
+            filedict[variable].cd()
+            filedict[variable].mkdir(cat.name)
+            filedict[variable].cd(cat.name)
+
+            for nickname in filelist.keys():
+
+                processObj = HAA_processes[nickname]
+
+                for process in processObj.cuts.keys():
+
+
+                    if filedict[variable].Get(cat.name).GetListOfKeys().Contains(str(process)):
+                        continue
+                    else:
+                        tmpbin = np.asarray(cat.newvariablesbins[numvar])
+                        newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                        newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+            numvar=numvar+1
 
     #gather extra global variables or weights
     
     weight = CommonWeights["lumi"][0]
+    weightstring = CommonWeights["string"]
+   
     #weight = weight+"*"+CommonWeights["mcweight"][0]
 
     #Calculate the scale factors and fill the histograms 
@@ -399,62 +483,9 @@ if __name__ == "__main__":
         #processes = HAA_processes[nickname].cuts
         processObj = HAA_processes[nickname]
 
-        calculateHistos(tree,allcats,processObj,nickname,histodict,weight)
+        calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstring,weight)
         
      
-        #write new ttree??
-        
-    
-
-    #for cat in categories:
-    #    print "working on category",cat.name
-    #     
-    #    ##parms = Params(category.varlist,category.cutlist) 
-    #    #need to make a chain fo TFile or something... 
-    #    filedict = {}
-
-    #    #Creating output files
-    #    for variables in cat.variables:
-    #        if len(cat.variables)>1:
-    #            filedict[variables[0]]=ROOT.TFile.Open(cat.name+"_"+str(variables[0])+".root","RECREATE")
-    #        else:
-    #            filedict[variables]=ROOT.TFile.Open(cat.name+"_"+str(variables)+".root","RECREATE")
-    #
-    #    #for file in filelist.keys():
-    #    for nickname in filelist.keys():
-
-    #        fin = ROOT.TFile.Open(dir+filelist[nickname],"read")
-    #        tree = fin.Get(treename)
-    #        print "tree entries ",tree.GetEntries()
-
-    #        #processes will be a dictionary of key: process name value: cuts
-    #        #processes = HAA_processes[nickname].cuts
-    #        processObj = HAA_processes[nickname]
-
-    #        tree = calculateHistos(tree,cat,processObj,nickname)
-
-    #        #for process in filelist[file]:
-
-    #        for process in processObj.cuts.keys():
-    #            
-    #            numvar=0
-    #            weight = CommonWeights["lumi"][0]
-    #            weight = weight+"*"+CommonWeights["mcweight"][0]
-    #            #weight = "*("+weight+")"
-    #            #weight = "*"+weight+"*"+SMHTTWeights["TES"][0]
-    #            if process=="data_obs":
-    #                weight = ""
-    #             
-    #            for variable in cat.variables:
-    #                print "on variable ",variable
-    #                #if len(variable)>1:
-    #                    #createUnrolledHistogram(cat,numvar,filelist,processObj,variable,weight,filedict)
-    #                #else:
-    #                createHistogram(cat,numvar,filelist,processObj,process,variable,weight,filedict)
-    #                numvar=numvar+1
-
-    #for varcatPro in histodict.keys():
-    #    print varcatPro," final entries ",histodict[varcatPro].GetEntries()
                 
     print "writing the histograms to the file"
     for varcatPro in histodict.keys():
@@ -463,14 +494,12 @@ if __name__ == "__main__":
         filedict[varcatPro.split(":")[0]].cd()
         filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
         histodict[varcatPro].Write(histodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
+    print "writing the histograms to the file"
+    for varcatPro in newhistodict.keys():
+        #print "file ",filedict[varcatPro.split(":")[0]].GetName()," contents ",filedict[varcatPro.split(":")[0]].ls()
+        print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",newhistodict[varcatPro].GetEntries()
+        filedict[varcatPro.split(":")[0]].cd()
+        filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
+        newhistodict[varcatPro].Write(newhistodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
             
-
-    #for cat in allcats:
-    #    numvar=0
-    #    for variable in cat.variables:
-    #        filedict[variable[0]].cd(cat.name)
-    #        print "Writing ",variable[0]+":"+process,"  final entries ",histodict[variable[0]+":"+process].GetEntries()
-    #        histodict[variable[0]+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-    #                    
-    #        numvar=numvar+1
 

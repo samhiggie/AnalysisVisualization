@@ -2,11 +2,11 @@
 #Author: Sam Higginbotham
 '''
 
-* File Name :Categories.py 
+* File Name :CategoriesTree.py 
 
-* Purpose : The Categories in the analysis... typically a set of extra cuts that define a phase space region of interest and stores the variables of interest in the fit and visualization
+* Purpose : The Categories in the analysis... typically a set of extra cuts that define a phase space region of interest and stores the variables of interest in the fit and visualization... this Tree mode is for the TTree Draw method therefore a cut string is fine... 
 
-* Creation Date : 05-02-2020
+* Creation Date : 07-04-2020
 
 * Last Modified :
 
@@ -14,7 +14,6 @@
 #########################
 import ROOT
 from Parametrization import Category
-from functions import *
 
 Inclusive = Category()
 Inclusive.name = "inclusive"
@@ -41,32 +40,14 @@ vbftestmela.binning = [[[50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,
 #number = { 'eeet':1, 'eemt':2, 'eett':3, 'eeem':4, 'mmet':5, 'mmmt':6, 'mmtt':7, 'mmem':8, 'et':9, 'mt':10, 'tt':11 }
 HAA_Inc_mmmt = Category()
 HAA_Inc_mmmt.name = "mmmt_inclusive"
+#idDeepTau2017v2p1VSmu_4>0&&idDeepTau2017v2p1VSe_4>0&&
+#HAA_Inc_mmmt.cuts["preselection"]= "pt_1>21&&pt_2>21&&pt_3>21&&pt_4>30&&mediumId_1>0&&mediumId_2>0&&mediumId_3>0&&iso_1<0.15&&iso_2<0.15&&iso_3<0.15&&idDeepTau2017v2p1VSjet_4>0"   #
+HAA_Inc_mmmt.cuts["preselection"]= "pt_1>5.&&pt_2>5.&&pt_3>5.&&pt_4>18.5&&abs(eta_4)<2.3&&idDeepTau2017v2p1VSjet_4>0&&idDeepTau2017v2p1VSmu_4>0&&idDeepTau2017v2p1VSe_4>0"   #
 #all things in brackets are "annnd"s a single cut can then be "OR" also even an equation "EQT" like q_1*q_2
-HAA_Inc_mmmt.cuts["preselection"]= [
-#["isTrig_1","!=",0],
-["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],
-["eta_4","absl",2.3],
-#[["EQT"],["q_3","q_4"],"mult",">",0],[["EQT"],["q_1","q_2"],"mult",">",0],
-["iso_1","<=",0.2],["iso_2","<=",0.2]]   #
-
-HAA_Inc_mmmt.cuts["categoryCuts"]= [
-["cat","==",6],["iso_3","<=",0.15]]
-#[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],
-#["mediumId_3",">=",1],["idDeepTau2017v2p1VSjet_4",">=",15.]]   #
-
+HAA_Inc_mmmt.cuts["categoryCuts"]= "cat==6&&AMass<120.0"   #
 #Trigger bit mapping... bits = [e.HLT_Ele27_eta2p1_WPTight_Gsf, e.HLT_Ele25_eta2p1_WPTight_Gsf, e.HLT_IsoMu24, e.HLT_IsoTkMu24, e.HLT_IsoMu27,e.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ, e.HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ,e.HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ]
 #2 -> 4 IsoMu24 ,  3 -> 8 IsoTkMu24  , 4 -> 16 IsoMu27  , 5 -> 32  e.HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
-#HAA_Inc_mmmt.cuts["trigger"]= [[["triggerWord","band",4],"||",["triggerWord","band",8],"||",["triggerWord","band",16],"||",["triggerWord","band",32]]]   #
-#if the statements are nested like this ... they are ors 
-HAA_Inc_mmmt.cuts["trigger"]=[
-[["OR"],["triggerWord","band",4],["triggerWord","band",8],["triggerWord","band",16],["triggerWord","band",32]]]
-#[["IF"],[["isTrig_1","==",1],["isTrig_2","==",0]],["THEN"],[["pt_1",">=",28]]]]   #
-
-#new variables that are defined on the fly. These are not in the Tree, but are functions of variables in the tree
-#see function definitions above
-HAA_Inc_mmmt.newvariables["mll-mtt"] = ["minus",["mll","m_vis"]]
-HAA_Inc_mmmt.newvariablesbins = [[-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0,40.0,50.0,60.0]]
-#HAA_Inc_mmmt.newvariables["mll-mtt"] = tauSFTool.getSFvsPT(e.pt_3,e.gen_match_3)["mll","mtt"]
+HAA_Inc_mmmt.cuts["trigger"]="(triggerWord&&4||triggerWord&&8||triggerWord&&16||triggerWord&&32)"   #
 
 HAA_Inc_mmmt.variables = [["m_vis"],
 ["AMass"],

@@ -17,6 +17,8 @@ class Category():
     def __init__(self):
         self.name = []
         self.variables = []
+        self.newvariables = {}
+        self.newvariablesbins = []
         self.cuts = {}
         self.binning = []
         self.extraplots = {}

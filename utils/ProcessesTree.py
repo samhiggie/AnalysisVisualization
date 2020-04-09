@@ -2,7 +2,7 @@
 #Author: Sam Higginbotham
 '''
 
-* File Name : Processes.py
+* File Name : ProcessesTree.py
 
 * Purpose : Stores dictionaries for analysis signal and background files 
             THIS DRIVES ALL HISTOGRAMS STORED! AND IN PLOTS FOR THE STACK
@@ -65,15 +65,15 @@ with open("/afs/cern.ch/work/s/shigginb/cmssw/HAA/ZH_Run2_10_2_9/src/AnalysisVis
 #HToAAToMuMuTauTau_M45_2016.root  TTWZ_2016.root
 
 
-a40test = Process()
-a40test.nickname = "HToAAToMuMuTauTau_M40"
-a40test.plotname = "a40"
-a40test.weights = {"xsec":1,"nevents":250000,"theoryXsec":(31.05*0.00005)} #higgs xsec [pb] * 2hdm type Branching ratio
-a40test.cuts = {"a40":""}
-a40test.file = "HToAAToMuMuTauTau_M40_2016.root"
-a40test.classification = sampleDict[a40test.nickname][3]
-a40test.color = [ROOT.kRed]    #do i need a list here??? to embed it
-HAA_processes_test[a40test.nickname]=a40test
+a15test = Process()
+a15test.nickname = "HToAAToMuMuTauTau_M15"
+a15test.plotname = "a15"
+a15test.weights = {"xsec":1,"nevents":250000,"theoryXsec":(31.05*0.00005)} #higgs xsec [pb] * 2hdm type Branching ratio
+a15test.cuts = {"a15":""}
+a15test.file = "HToAAToMuMuTauTau_M15_2016.root"
+a15test.classification = sampleDict[a15test.nickname][3]
+a15test.color = [ROOT.kRed]    #do i need a list here??? to embed it
+HAA_processes_test[a15test.nickname]=a15test
     
 
 a15 = Process()
@@ -200,7 +200,7 @@ DY = Process()
 DY.nickname = "DYJetsToLL"
 DY.plotname = "ZTT"
 DY.weights = {"xsec":sampleDict[DY.nickname][1],"nevents":sampleDict[DY.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DY.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DY.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DY.file = DY.nickname+"_2016.root"
 DY.classification = sampleDict[DY.nickname][3]
 DY.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -210,7 +210,7 @@ DYext = Process()
 DYext.nickname = "DYJetsToLLext"
 DYext.plotname = "ZTT"
 DYext.weights = {"xsec":sampleDict[DYext.nickname][1],"nevents":sampleDict[DYext.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DYext.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DYext.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DYext.file = DYext.nickname+"_2016.root"
 DYext.classification = sampleDict[DYext.nickname][3]
 DYext.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -220,7 +220,7 @@ DY1 = Process()
 DY1.nickname = "DY1JetsToLL"
 DY1.plotname = "ZTT"
 DY1.weights = {"xsec":sampleDict[DY1.nickname][1],"nevents":sampleDict[DY1.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DY1.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DY1.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DY1.file = DY1.nickname+"_2016.root"
 DY1.classification = sampleDict[DY1.nickname][3]
 DY1.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -230,7 +230,7 @@ DY2 = Process()
 DY2.nickname = "DY2JetsToLL"
 DY2.plotname = "ZTT"
 DY2.weights = {"xsec":sampleDict[DY2.nickname][1],"nevents":sampleDict[DY2.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DY2.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DY2.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DY2.file = DY2.nickname+"_2016.root"
 DY2.classification = sampleDict[DY2.nickname][3]
 DY2.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -240,7 +240,7 @@ DY3 = Process()
 DY3.nickname = "DY3JetsToLL"
 DY3.plotname = "ZTT"
 DY3.weights = {"xsec":sampleDict[DY3.nickname][1],"nevents":sampleDict[DY3.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DY3.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DY3.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DY3.file = DY3.nickname+"_2016.root"
 DY3.classification = sampleDict[DY3.nickname][3]
 DY3.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -250,7 +250,7 @@ DY4 = Process()
 DY4.nickname = "DY4JetsToLL"
 DY4.plotname = "ZTT"
 DY4.weights = {"xsec":sampleDict[DY4.nickname][1],"nevents":sampleDict[DY4.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DY4.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DY4.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DY4.file = DY4.nickname+"_2016.root"
 DY4.classification = sampleDict[DY4.nickname][3]
 DY4.color = ["#CF8AC8"]    #do i need a list here??? to embed it
@@ -260,22 +260,13 @@ DYM = Process()
 DYM.nickname = "DYJetsToLLM10to50"
 DYM.plotname = "ZTT"
 DYM.weights = {"xsec":sampleDict[DYM.nickname][1],"nevents":sampleDict[DYM.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
-DYM.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
+DYM.cuts = {"Z":"","ZTT":"gen_match_4==5","ZL":"gen_match_4>=5","ZJ":"gen_match_4>5"} #higgs xsec [pb] * 2hdm type Branching ratio
 DYM.file = DYM.nickname+"_2016.root"
 DYM.classification = sampleDict[DYM.nickname][3]
 DYM.color = ["#CF8AC8"]    #do i need a list here??? to embed it
 HAA_processes[DYM.nickname]=DYM
 
 
-W1Jets = Process()
-W1Jets.nickname = "W1JetsToLNu"
-W1Jets.plotname = "W"
-W1Jets.weights = {"xsec":sampleDict[W1Jets.nickname][1],"nevents":sampleDict[W1Jets.nickname][3]}
-W1Jets.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
-W1Jets.file = W1Jets.nickname+"_2016.root"
-W1Jets.classification = sampleDict[W1Jets.nickname][3]
-W1Jets.color = ["#CF8AC8"]    
-HAA_processes[W1Jets.nickname]=W1Jets
 
 
 #old method

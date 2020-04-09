@@ -14,20 +14,20 @@
 #########################
 CommonWeights={}
 #CommonWeights["lumi"]=["59740"]
-CommonWeights["lumi"]=[35900]#pb^-1
+CommonWeights["lumi"]=["35900"]#pb^-1
 #CommonWeights["lumi"]=["1"]#pb^-1
 #CommonWeights["mcweight"]=["__WEIGHT__*GENWEIGHT*puweight"]
 #CommonWeights["mcweight"]=["LHEweight*weight"]
-CommonWeights["string"]=[["Generator_weight"],["weight"]]
+CommonWeights["mcweight"]=["weight"]
 
 
-#SMHTTWeights={}
-#SMHTTWeights["data_obs"]=[""]
-#SMHTTWeights["TTT"]=CommonWeights["mcweight"]
-#SMHTTWeights["TTL"]=CommonWeights["mcweight"]
-#SMHTTWeights["ZTT"]=CommonWeights["mcweight"]
-#SMHTTWeights["ZTL"]=CommonWeights["mcweight"]
-#SMHTTWeights["ZL"]=CommonWeights["mcweight"]
+SMHTTWeights={}
+SMHTTWeights["data_obs"]=[""]
+SMHTTWeights["TTT"]=CommonWeights["mcweight"]
+SMHTTWeights["TTL"]=CommonWeights["mcweight"]
+SMHTTWeights["ZTT"]=CommonWeights["mcweight"]
+SMHTTWeights["ZTL"]=CommonWeights["mcweight"]
+SMHTTWeights["ZL"]=CommonWeights["mcweight"]
 
 #Where do I place energy scale shifts? 
 HAAWeights={}
