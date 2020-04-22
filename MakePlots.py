@@ -89,23 +89,30 @@ def normalize_hist(h):
     return k
 
 def assignColor(h): 
+    from utils.Processes import HAA_processes
     name = h.GetName()
     if "a15" in name or "a20" in name or "a25" in name or "a30" in name or "a35" in name or "a40" in name: 
         h.SetLineColor(ROOT.kRed)
         h.SetFillColor(0)
         h.SetLineWidth(4)
-    if "ZL" in name: 
-        h.SetFillColor()
+    if "ZZ" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["ZZ"].color[0]))
     if "ZTT" in name: 
-        h.SetFillColor()
-    if "TTT" in name: 
-        h.SetFillColor()
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["DYJetsToLL"].color[0]))
+    if "TT" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["TTJets_1LTbar"].color[0]))
+    if "Z" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["DYJetsToLL"].color[0]))
+    if "W" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["WJetsToLNu"].color[0]))
+    if "EWK" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["EWKWMinus2Jets"].color[0]))
+    if "ST" in name: 
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["ST_s"].color[0]))
     if "TTL" in name: 
-        h.SetFillColor()
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["TTJets_1LTbar"].color[0]))
     if "ZTL" in name: 
-        h.SetFillColor()
-    if "jetFakes" in name: 
-        h.SetFillColor()
+        h.SetFillColor(ROOT.TColor.GetColor(HAA_processes["DYJetsToLL"].color[0]))
     return h 
 
 def makeHisto(h,hS,hB,hD):
@@ -135,7 +142,8 @@ if __name__ == "__main__":
 
     #Change these to input category files ?? via parser?
     from utils.Categories import HAA_Inc_mmmt
-    from utils.Processes import HAA
+    from utils.Categories import allcats
+    from utils.Processes import HAA_processes
 
     #parser = argsparse.ArgumentParser(description="make full plots from root files containing histograms")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
@@ -154,83 +162,267 @@ if __name__ == "__main__":
 
 
     #myfile=ROOT.TFile(args.input,"read")  
-    myfile=ROOT.TFile("mmmt_inclusive_AMass.root","read")   
+    myfile=ROOT.TFile("AMass.root","read")   
     
+    #gathering all the categories as a list of files
+    #for cat in allcats:
     catnames = HAA_Inc_mmmt.name
-    variables = HAA_Inc_mmmt.variables  
+    newvars=[]
+    for newvar in  HAA_Inc_mmmt.newvariables.keys():
+        newvars.append([newvar])
+    variables = [] 
+    for varHandle in HAA_Inc_mmmt.vars.keys():
+        variables.append([varHandle])
+    variables = variables + newvars
+    #print variables
     filelist = {}
     processes = []
     
     for var in variables:
-        filelist[var[0]] = catnames+"_"+var[0]+".root"
-    for pro in HAA.values():
-        processes.append(pro[0])
-    print "Will plot the following physics processes ",processes
+        filelist[var[0]] = var[0]+".root"
+
+    for pro in HAA_processes.values():
+        for subpro in pro.cuts.keys():
+            processes.append(subpro)
+    processes=list(dict.fromkeys(processes))
+    #print "Will plot the following physics processes ",processes
 
 
-    for var in filelist.keys():
+    for ivar,var in enumerate(filelist.keys()):
+    #for ivar,var in enumerate(cat.vars.keys()):
         print "Working on file ",filelist[var],"  for variable   ",var
-        file = ROOT.TFile(filelist[var],"read")
+        file = ROOT.TFile("out/"+filelist[var],"read")
+        #bins=HAA_Inc_mmmt.binning + HAA
+         
+        #for catname in enumerate():
+        cati = 0
         for categoryKey in file.GetListOfKeys():
             category = categoryKey.ReadObj()
-            if category:
-                hSignal = ROOT.THStack("signal","")
-                hBackground = ROOT.THStack("background","")
-                hData = ROOT.TH1D()
-                print "Working on category ... ",category.GetName()
-                category.cd()
-                histolist=[]
-                for histokey in category.GetListOfKeys():
-                    histoOriginal = histokey.ReadObj()
-                    histo = histoOriginal.Clone()
-                    print histo.GetName()
-                    histolist.append(histo)
-                    name = histo.GetName()
-                    
-                    if (name in processes):
-                        #make classification here ?? or use the processes from Processes.py?
-                        #histo,hSignal,hBackground,hData = makeHisto(histo,hSignal,hBackground,hData) 
-                        if "a15" in name or "a20" in name or "a25" in name or "a30" in name or "a35" in name or "a40" in name: 
-                            histo = assignColor(histo)
-                            print histo.GetEntries()
-                            hSignal.Add(histo)
-                        if "ZL" in name or "ZTT" in name or "TTT" in name or "TTL" in name or "ZTL" in name or "jetFakes" in name: 
-                            histo = assignColor(histo)
-                            hBackground.Add(histo)
-                        
-                    #else (histo.IsA().InheritsFrom("TH1")):
-                    #    cother=ROOT.TCanvas("canvasOther","",0,0,600,600)
-                    #    cother.cd()
-                    #    histo.Draw()
-                    #    cother.SaveAs("other_"+histo.GetName()+".png")
-                    #    cother.Delete()
-                    #histo.Delete()
-                c=ROOT.TCanvas("canvas","",0,0,600,600)
-                pad1 = ROOT.TPad("pad1","pad1",0,0,1,1)
-                pad2 = ROOT.TPad("pad2","pad2",0.45,0.35,0.92,0.95)
-                pad2 = ROOT.TPad("pad2","The lower pad",0,0,1.0,0.29)
-                c.cd()
-                pad1.Draw()
-                pad1.cd()
-                lumi=add_lumi()
-                cms=add_CMS()
-                pre=add_Preliminary()
-                #print "signal entries   ",hSignal.GetEntries()
-                hSignal.Draw()
-                hSignal.GetXaxis().SetTitle(str(var))
-                #for hist in histolist:
-                #    hist.Draw("same")
-                lumi.Draw()
-                cms.Draw()
-                pre.Draw()
-        
-                c.SaveAs(var+".png")
-                c.Delete()
-                pad1.Delete()
-                pad2.Delete()
-                #hBackground.Draw()
-                #hData.Draw()
-                #pad2.cd()
+            print "Working on category ",category.GetName()
+            try:
+                os.mkdir("outplots_"+str(category.GetName()))
+            except:
+                print "dir prob exists"
 
+            fileout = open("outplots_"+str(category.GetName())+"/"+str(allcats[cati].name)+"_info.txt","w")  
+            fileout.write("Working on category "+allcats[cati].name+"\n")
+
+            #signal 
+            hSignal = category.Get("a40")
+            
+            #reducible
+            #hBackground = ROOT.THStack("reducible background","")
+            hBackground = category.Get("Z")
+            hBackground.Add(category.Get("W"))
+            hBackground.Add(category.Get("TT"))
+            hBackground.Add(category.Get("ST"))
+            hBackground.Add(category.Get("EWK"))
+            
+            #irreducible
+            #hirBackground = ROOT.THStack("irreducible background","")
+            #hirBackground = ROOT.TH1D()
+            hirBackground = category.Get("ZZ")
+            hirBackground.Add(category.Get("ZHToTauTau"))
+
+            #triple coupling 
+            h3alphBackground = category.Get("ttZ")
+            h3alphBackground.Add(category.Get("WWZ"))
+            h3alphBackground.Add(category.Get("WZZ"))
+            h3alphBackground.Add(category.Get("ZZZ"))
+            h3alphBackground.Add(category.Get("HZJ"))
+            h3alphBackground.Add(category.Get("GluGluToContinToZZTo2mu2tau"))
+
+            #rare 
+            hrareBackground = category.Get("rare")
+            #hrareBackground = category.Get("TTGamma_Hadr")
+            #hrareBackground.Add(category.Get("TTGamma_1LT"))
+            #hrareBackground.Add(category.Get("TTGamma_1LTbar"))
+            #hrareBackground.Add(category.Get("TTGamma_2L"))
+            #hrareBackground.Add(category.Get("TTHH"))
+            #hrareBackground.Add(category.Get("TTTJ"))
+            #hrareBackground.Add(category.Get("TTTT"))
+            #hrareBackground.Add(category.Get("TTTW"))
+            #hrareBackground.Add(category.Get("TTW"))
+            #hrareBackground.Add(category.Get("TTWH"))
+            #hrareBackground.Add(category.Get("TTWJetsToQQ"))
+            #hrareBackground.Add(category.Get("TTWW"))
+            #hrareBackground.Add(category.Get("TTWZ"))
+            #hrareBackground.Add(category.Get("TTZH"))
+            #hrareBackground.Add(category.Get("TTZZ"))
+            #hrareBackground.Add(category.Get("WW"))
+            #hrareBackground.Add(category.Get("WWext"))
+            #hrareBackground.Add(category.Get("WZext"))
+
+            #data
+            hData = category.Get("data_obs")
+
+
+            
+            #print "Working on category ... ",category.GetName()
+            category.cd()
+            histolist=[]
+
+            hBackground.SetLineColor(1)
+            hirBackground.SetLineColor(1)
+            hrareBackground.SetLineColor(1)
+            hBackground.SetFillStyle(1001)
+            hirBackground.SetFillStyle(1001)
+            hrareBackground.SetFillStyle(1001)
+            hBackground.SetFillColor(ROOT.TColor.GetColor("#CF8AC8"))
+            hirBackground.SetFillColor(ROOT.TColor.GetColor("#13E2FE"))
+            #h3alphBackground.SetFillColor(ROOT.TColor.GetColor("#65E114"))
+            hrareBackground.SetFillColor(ROOT.TColor.GetColor("#65E114"))
+            #hrareBackground.SetFillColor(ROOT.TColor.GetColor("#FF6600"))
+            h3alphBackground.SetFillColor(ROOT.TColor.GetColor("#FF6600"))
+                        
+            #hSignal.SetTitle()
+            hBackground.SetTitle("reducible")
+            hirBackground.SetTitle("irreducible")
+            h3alphBackground.SetTitle("triple #alpha")
+            hrareBackground.SetTitle("rare")
+
+            #for ratio
+            hbkgtot = hBackground.Clone()
+            #hbkgtot = h3alphBackground.Clone()
+            hbkgtot.Add(hirBackground)
+            hbkgtot.Add(hrareBackground)
+
+            hBkgTot = ROOT.THStack()
+            hBkgTot.Add(hBackground)
+            hBkgTot.Add(hirBackground)
+            hBkgTot.Add(hrareBackground)
+            #hBkgTot.Add(h3alphBackground)
+
+
+            H = 600
+            W = 600
+
+            H_ref = 600
+            W_ref = 600
+
+           
+            T = 0.08*H_ref
+            B = 0.12*H_ref 
+            L = 0.16*W_ref
+            R = 0.04*W_ref
+
+            
+            B_ratio = 0.1*H_ref
+            T_ratio = 0.03*H_ref
+
+            B_ratio_label = 0.3*H_ref
+
+            c=ROOT.TCanvas("canvas","",0,0,600,600)
+
+            doRatio=True
+
+            if not doRatio:
+                c.SetLeftMargin     (L/W)
+                c.SetRightMargin    (R/W)
+                c.SetTopMargin      (T/H)
+                c.SetBottomMargin   (B/H)
+            c.cd()
+
+            pad1 = ROOT.TPad("pad1","pad1",0.0016,0.291,1.0,1.0)
+            #pad2 = ROOT.TPad("pad2","pad2",0.45,0.35,0.92,0.95)
+            pad2 = ROOT.TPad("pad2","The lower pad",0,0,1.0,0.29)
+
+            if(doRatio):
+
+                pad1.SetTicks(0,0)
+                pad1.SetLeftMargin(L/W)
+                pad1.SetRightMargin(R/W)
+                pad1.SetTopMargin(T/H)
+                pad1.SetBottomMargin(B_ratio/H) 
+                pad1.SetFillColor(0)
+                pad1.SetBottomMargin(0)
+
+
+                pad2.SetLeftMargin(L/W)
+                pad2.SetRightMargin(R/W)
+                pad2.SetTopMargin(T_ratio/H)
+                pad2.SetTopMargin(0.007)
+                pad2.SetBottomMargin(B_ratio_label/H)
+                pad2.SetGridy(1)
+                pad2.SetFillColor(4000)
+
+            else:
+                pad1 = ROOT.TPad("pad1","pad1",0,0,1,1)
+                pad1.SetLeftMargin     (L/W)
+                pad1.SetRightMargin    (R/W)
+                pad1.SetTopMargin      (T/H)
+                pad1.SetBottomMargin   (B/H)
+
+
+
+            pad1.Draw()
+            pad1.cd()
+            lumi=add_lumi()
+            cms=add_CMS()
+            pre=add_Preliminary()
+            xR=0.65
+            l=ROOT.TLegend(xR,0.55,xR+0.28,0.9);
+            l.AddEntry(hData)
+            l.AddEntry(hSignal)
+            l.AddEntry(hBackground)
+            l.AddEntry(hirBackground)
+            l.AddEntry(hrareBackground)
+            #l.AddEntry(h3alphBackground)
+
+            #print "signal entries   ",hSignal.GetEntries()
+            hData.SetTitle("")
+            hData.SetMarkerStyle(8)
+            hData.Draw("ep")
+            hBkgTot.Draw("HIST same")
+            hSignal.Draw("same")
+            hBkgTot.GetXaxis().SetTitle(str(var))
+            hBkgTot.GetYaxis().SetTitle("Events")
+            hData.GetXaxis().SetTitle(str(var))
+            hData.GetYaxis().SetTitle("Events")
+            hData.Draw("ep same")
+            #hBackground.Draw("same")
+            #hirBackground.Draw("same")
+            #for hist in histolist:
+            #    hist.Draw("same")
+            lumi.Draw()
+            cms.Draw()
+            pre.Draw()
+            l.Draw()            
+
+            #TPad 2 for ratio
+            c.cd()
+            hData2=hData.Clone()
+            pad2.Draw()
+            pad2.cd()
+            hData2.Divide(hbkgtot)
+            hData2.SetMarkerStyle(20)
+            hData2.SetTitleSize  (0.12,"Y")
+            hData2.SetTitleOffset(0.40,"Y")
+            hData2.SetTitleSize  (0.12,"X")
+            hData2.SetLabelSize  (0.10,"X")
+            hData2.SetLabelSize  (0.08,"Y")
+            #hData2.GetYaxis().SetRangeUser(0.62,1.38)
+            hData2.GetYaxis().SetRangeUser(0.3,2.2)
+            hData2.GetYaxis().SetNdivisions(305)
+            hData2.GetYaxis().SetTitle("Obs/Exp   ")
+            hData2.Draw("P");
+            pad2.Draw()
+
+            #print "with cuts ",allcats[cati].cuts
+            #print "data entries ",hData.GetEntries()
+            #print "background entries ",hBackground.GetEntries()
+            fileout.write("with cuts "+str(allcats[cati].cuts)+"\n")
+            fileout.write("data entries "+str(hData.GetEntries())+"\n")
+            fileout.write("background entries "+str(hBackground.GetEntries())+"\n")
+            
+            c.SaveAs("outplots_"+str(category.GetName())+"/"+var+"_"+str(category.GetName())+".png")
+            cati = cati +1
+
+            hBackground.Delete()
+            hirBackground.Delete()
+            h3alphBackground.Delete()
+            hData.Delete()
+            hData2.Delete()
+            hBkgTot.Delete()
 
 

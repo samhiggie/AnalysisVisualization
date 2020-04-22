@@ -3,7 +3,7 @@
 #Author: Sam Higginbotham
 '''
 
-* File Name : MakeDataCards_HAA_Event.py
+* File Name : MakeDataCards_HAA.py
 
 * Purpose : For Datacard creation. Root file containing histograms that can be used with Combine. This will skim the events 
 
@@ -259,15 +259,14 @@ def createUnrolledHistogram(cat,numvar,filelist,process,variable,weight,filedict
     return
 
 
-def calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstring,commonweight):
+def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,commonweight):
             
 
     #do I need to use branches?
     #need a temp variable per new variable to fill each event
     newVarVals={}
-    for cats in allcats:
-        for var in cats.newvariables.keys():
-            newVarVals[var]=0.0
+    for var in HAA_Inc_mmmt.newvariables.keys():
+        newVarVals[var]=0.0
 
     
     for ievt, evt in enumerate(tree):
@@ -292,6 +291,7 @@ def calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstri
             wtstring = wtstring * abs(getattr(evt,wts[0],None))
         #weightfinal = weightfinal * wtstring
         #fill histograms 
+
         for cat in allcats:
 
             for process in processObj.cuts.keys():
@@ -300,6 +300,7 @@ def calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstri
 
                 #Weights addition to common
                 weightDict = processObj.weights
+                weightfinal = commonweight
                 for scalefactor in weightDict.keys():
                     if scalefactor == "nevents":
                         #weightfinal =  weightfinal+"*"+"("+"1/"+str(weightDict[scalefactor])+")"
@@ -318,25 +319,35 @@ def calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstri
 
                 #Operator expansion cut string
                 survive=cutStringBool(evt,cuts)
+
+                if process=="data_obs":
+                    weightfinal = 1.0   #don't weight the data!!
                 
                 if survive==True:
 
                     #fill the new variables 
                     for var in newVarVals.keys():
                         #print cat.newvariables[var][1]
-                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][1]))
+                        #print var+":"+cat.name+":"+process
+                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][1]),float(weightfinal))
 
                     #fill the current variables
-                    for variable in cat.variables:
+                    #for variable in cat.variables:
+                    for variableHandle in cat.vars.keys():
                         #move this outside variables
       
                         #obtaining the right variable... WHAT about changed variables in the event!!?
-                        val = getattr(evt,variable[0],None)
-                        filedict[variable[0]].cd()
-                        filedict[variable[0]].cd(cat.name)
+                        val = getattr(evt,cat.vars[variableHandle][0],None)
+                        filedict[variableHandle].cd()
+                        filedict[variableHandle].cd(cat.name)
                         #Fix the weight problem!!!
-                        #histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
-                        histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
+                        if not val==None:
+                            histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                        #if process=="data_obs":
+                        #    histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
+                        #else:
+                        #    histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                        #histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
                 
 
 
@@ -352,7 +363,6 @@ if __name__ == "__main__":
 
 
     #Structure for mapping between root files and processes  
-    from utils.Processes import HAA
     from utils.Processes import HAA_processes
     #for testing only... one cat a15
     #from utils.Processes import HAA_processes_test
@@ -373,6 +383,7 @@ if __name__ == "__main__":
 
     #gather all the analysis categories
     from utils.Categories import allcats
+    from utils.Categories import HAA_Inc_mmmt
     
     #gather functions for computing variables in the event loop
     from utils.functions import functs
@@ -383,7 +394,8 @@ if __name__ == "__main__":
     #categories = allcats
 
     #Gather the Analysis Files
-    dir = "/eos/user/s/shigginb/HAA_ntuples/March_2020/"
+    #dir = "/eos/user/s/shigginb/HAA_ntuples/March_2020/"
+    dir = "/eos/home-s/shigginb/HAA_ntuples/March_2020/"
     #filelist = HAA
     filelist = {}
 
@@ -409,16 +421,21 @@ if __name__ == "__main__":
     filedict = {}
     histodict = {}
     newhistodict = {}
-    for cat in allcats:
-        numvar=0
-        for variable in cat.variables:
+    #cat=HAA_Inc_mmmt
 
-            #filedict[variable[0]]=ROOT.TFile.Open(cat.name+"_"+str(variable[0])+".root","RECREATE")
-            filedict[variable[0]]=ROOT.TFile.Open(str(variable[0])+".root","RECREATE")
-            #print "on variable ",variable
-            filedict[variable[0]].cd()
-            filedict[variable[0]].mkdir(cat.name)
-            filedict[variable[0]].cd(cat.name)
+    numvar=0
+    for variableHandle in HAA_Inc_mmmt.vars.keys():
+    
+        #variable=fullvariable.split(":") # for the unrolled cases
+
+        #filedict[variable[0]]=ROOT.TFile.Open(cat.name+"_"+str(variable[0])+".root","RECREATE")
+        filedict[variableHandle]=ROOT.TFile.Open("out/"+str(variableHandle)+".root","RECREATE")
+        #print "on variableHandle ",variableHandle
+        filedict[variableHandle].cd()
+        for cat in allcats:
+            #print "Working on cat ",cat.name
+            filedict[variableHandle].mkdir(cat.name)
+            filedict[variableHandle].cd(cat.name)
 
             for nickname in filelist.keys():
 
@@ -427,23 +444,29 @@ if __name__ == "__main__":
                 for process in processObj.cuts.keys():
 
 
-                    if filedict[variable[0]].Get(cat.name).GetListOfKeys().Contains(str(process)):
+                    if filedict[variableHandle].Get(cat.name).GetListOfKeys().Contains(str(process)):
                         continue
                     else:
-                        bins = cat.binning[numvar]
-                        tmpbin = np.asarray(cat.binning[numvar])
-                        histodict[variable[0]+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                        histodict[variable[0]+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-            numvar=numvar+1
-    #gathering new varibles
-    for cat in allcats:
-        numvar=0
-        for variable in cat.newvariables.keys():
+                        #bins = cat.binning[numvar]
+                        bins = cat.vars[variableHandle][1]
+                        if type(bins[0])==list:
+                            histodict[variableHandle+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
+                            histodict[variableHandle+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        else:
+                            tmpbin = np.asarray(bins)
+                            histodict[variableHandle+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                            histodict[variableHandle+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+        numvar=numvar+1
 
-            #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
-            filedict[variable]=ROOT.TFile.Open(str(variable)+".root","RECREATE")
-            #print "on variable ",variable
-            filedict[variable].cd()
+    #gathering new varibles
+    numvar=0
+    for variable in HAA_Inc_mmmt.newvariables.keys():
+
+        #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
+        filedict[variable]=ROOT.TFile.Open("out/"+str(variable)+".root","RECREATE")
+        #print "on variable ",variable
+        filedict[variable].cd()
+        for cat in allcats:
             filedict[variable].mkdir(cat.name)
             filedict[variable].cd(cat.name)
 
@@ -453,14 +476,14 @@ if __name__ == "__main__":
 
                 for process in processObj.cuts.keys():
 
-
                     if filedict[variable].Get(cat.name).GetListOfKeys().Contains(str(process)):
                         continue
                     else:
                         tmpbin = np.asarray(cat.newvariablesbins[numvar])
+                        #print variable+":"+cat.name+":"+process
                         newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
                         newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-            numvar=numvar+1
+        numvar=numvar+1
 
     #gather extra global variables or weights
     
@@ -483,7 +506,7 @@ if __name__ == "__main__":
         #processes = HAA_processes[nickname].cuts
         processObj = HAA_processes[nickname]
 
-        calculateHistos(functs,tree,allcats,processObj,nickname,histodict,weightstring,weight)
+        calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,weight)
         
      
                 
