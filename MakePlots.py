@@ -144,11 +144,12 @@ if __name__ == "__main__":
     from utils.Categories import HAA_Inc_mmmt
     from utils.Categories import allcats
     from utils.Processes import HAA_processes
+    import argparse
 
-    #parser = argsparse.ArgumentParser(description="make full plots from root files containing histograms")
+    parser = argparse.ArgumentParser(description="make full plots from root files containing histograms")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
-    #parser.add_argument("-i",  "--input", default="mvis.root",  help="input file containing histograms")
-    #args = parser.parse_args()
+    parser.add_argument("-o",  "--output", default="",  help="postfix string")
+    args = parser.parse_args()
 
     ROOT.gStyle.SetFrameLineWidth(2)
     ROOT.gStyle.SetLineWidth(2)
@@ -168,11 +169,14 @@ if __name__ == "__main__":
     #for cat in allcats:
     catnames = HAA_Inc_mmmt.name
     newvars=[]
+    variabledic={}
     for newvar in  HAA_Inc_mmmt.newvariables.keys():
         newvars.append([newvar])
+        variabledic[newvar]=[newvar,HAA_Inc_mmmt.newvariables[newvar][1],HAA_Inc_mmmt.newvariables[newvar][3],HAA_Inc_mmmt.newvariables[newvar][4]]
     variables = [] 
     for varHandle in HAA_Inc_mmmt.vars.keys():
         variables.append([varHandle])
+        variabledic[varHandle]=HAA_Inc_mmmt.vars[varHandle]
     variables = variables + newvars
     #print variables
     filelist = {}
@@ -200,12 +204,13 @@ if __name__ == "__main__":
             category = categoryKey.ReadObj()
             print "Working on category ",category.GetName()
             try:
-                os.mkdir("outplots_"+str(category.GetName()))
+                os.mkdir("outplots_"+args.output+"_"+str(category.GetName()))
             except:
                 print "dir prob exists"
-
-            fileout = open("outplots_"+str(category.GetName())+"/"+str(allcats[cati].name)+"_info.txt","w")  
-            fileout.write("Working on category "+allcats[cati].name+"\n")
+            
+            if var=="AMass":
+                fileout = open("outplots_"+args.output+"_"+str(category.GetName())+"/"+str(allcats[cati].name)+"_info.txt","w")  
+                fileout.write("Working on category "+allcats[cati].name+"\n")
 
             #signal 
             hSignal = category.Get("a40")
@@ -375,9 +380,9 @@ if __name__ == "__main__":
             hData.Draw("ep")
             hBkgTot.Draw("HIST same")
             hSignal.Draw("same")
-            hBkgTot.GetXaxis().SetTitle(str(var))
+            hBkgTot.GetXaxis().SetTitle(variabledic[var][3]+variabledic[var][2])
             hBkgTot.GetYaxis().SetTitle("Events")
-            hData.GetXaxis().SetTitle(str(var))
+            hData.GetXaxis().SetTitle(variabledic[var][3]+variabledic[var][2])
             hData.GetYaxis().SetTitle("Events")
             hData.Draw("ep same")
             #hBackground.Draw("same")
@@ -411,11 +416,15 @@ if __name__ == "__main__":
             #print "with cuts ",allcats[cati].cuts
             #print "data entries ",hData.GetEntries()
             #print "background entries ",hBackground.GetEntries()
-            fileout.write("with cuts "+str(allcats[cati].cuts)+"\n")
-            fileout.write("data entries "+str(hData.GetEntries())+"\n")
-            fileout.write("background entries "+str(hBackground.GetEntries())+"\n")
+            if var=="AMass":
+                for key in allcats[cati].cuts.keys():
+                    for cut in allcats[cati].cuts[key]:
+                        fileout.write(str(cut))
+                    fileout.write("\n")
+                fileout.write("data entries "+str(hData.Integral())+"\n")
+                fileout.write("background entries "+str(hBackground.Integral())+"\n")
             
-            c.SaveAs("outplots_"+str(category.GetName())+"/"+var+"_"+str(category.GetName())+".png")
+            c.SaveAs("outplots_"+args.output+"_"+str(category.GetName())+"/"+var+"_"+str(category.GetName())+".png")
             cati = cati +1
 
             hBackground.Delete()

@@ -60,7 +60,6 @@ def cutStringBool(evt,cuts):
             else: continue
         # "EQT" does a particular set of variables when applied in a function pass a cut?
         if cut[0][0]=="EQT":
-            #print cut[0]
             for i,var in enumerate(cut[1]):
                 if cut[2]=="mult":
                     if i==0:
@@ -79,9 +78,10 @@ def cutStringBool(evt,cuts):
                         tempvar = 0.0
                     tempvar = tempvar - getattr(evt,var,None)
 
-            if ops[cut[3]](tempvar,cut[4]):
-                survive=True
+            survive = ops[cut[3]](tempvar,cut[4])
+            #survive=True
             if not survive:
+                #print cut[0],"     ",cut[1][0],"  ",getattr(evt,cut[1][0],None),"   ",cut[1][1],"   ",getattr(evt,cut[1][1],None),"  multicharge  ",tempvar,"   bool   ",ops[cut[3]](tempvar,cut[4])
                 break
             else: continue 
         # "IF" statments in order to make cuts after variables in an event pass a selection criteria ... "THEN" included only for asethetics 
@@ -329,7 +329,7 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                     for var in newVarVals.keys():
                         #print cat.newvariables[var][1]
                         #print var+":"+cat.name+":"+process
-                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][1]),float(weightfinal))
+                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
 
                     #fill the current variables
                     #for variable in cat.variables:
@@ -479,7 +479,9 @@ if __name__ == "__main__":
                     if filedict[variable].Get(cat.name).GetListOfKeys().Contains(str(process)):
                         continue
                     else:
-                        tmpbin = np.asarray(cat.newvariablesbins[numvar])
+                        #tmpbin = np.asarray(cat.newvariablesbins[numvar])
+                        bins = HAA_Inc_mmmt.newvariables[variable][1]
+                        tmpbin = np.asarray(bins)
                         #print variable+":"+cat.name+":"+process
                         newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
                         newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
