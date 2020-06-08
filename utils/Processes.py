@@ -85,6 +85,21 @@ data.classification = "data_obs"
 data.color = [ROOT.kBlack]    #do i need a list here??? to embed it
 HAA_processes[data.nickname]=data
 
+#This is a very special case ... datadriven approach where we have 3 different regions 
+#FF_1 leg 1 fails invert muon criteria 
+#FF_2 leg 2 fails invert tau criteria 
+#FF_12 both leg fail
+from Categories import ffbasecuts
+FF = Process()
+FF.nickname = "FF"
+FF.plotname = "FF"
+FF.weights = {"xsec":1.0} 
+FF.cuts = {"FF":"","FF_1":[ffbasecuts[0],["mediumId_3","<",1],["isGlobal_3","<",1],["isTracker_3","<",1],["idDeepTau2017v2p1VSjet_4",">=",2.]],"FF_2":[ffbasecuts[0],["mediumId_3",">=",1],[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],["idDeepTau2017v2p1VSjet_4","<",2.]],"FF_12":[ffbasecuts[0]]}
+FF.file = "data.root"
+FF.classification = "FF"
+#FF.color = [ROOT.kBlack]    #do i need a list here??? to embed it
+HAA_processes[FF.nickname]=FF
+
 a15 = Process()
 a15.nickname = "HToAAToMuMuTauTau_M15"
 a15.plotname = "a15"

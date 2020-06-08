@@ -21,6 +21,7 @@ class Category():
         self.newvariables = {}
         self.newvariablesbins = []
         self.cuts = {}
+        self.newvarcuts = {}
         self.binning = []
         self.extraplots = {}
         

@@ -10,7 +10,7 @@ import os
 #from HttStyles import GetStyleHtt
 #from HttStyles import MakeCanvas
 
-def add_lumi():
+def add_lumi(year):
     lowX=0.65
     lowY=0.835
     lumi  = ROOT.TPaveText(lowX, lowY+0.06, lowX+0.30, lowY+0.16, "NDC")
@@ -20,7 +20,7 @@ def add_lumi():
     lumi.SetTextColor(    1 )
     lumi.SetTextSize(0.04)
     lumi.SetTextFont (   42 )
-    lumi.AddText("35.9 fb^{-1} (13 TeV)")
+    lumi.AddText(str(year)+" 35.9 fb^{-1} (13 TeV)")
     return lumi
 
 def add_CMS():
@@ -148,7 +148,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="make full plots from root files containing histograms")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
+    parser.add_argument("-i",  "--input", default="",  help="postfix string from previous MakeDataCard step")
     parser.add_argument("-o",  "--output", default="",  help="postfix string")
+    parser.add_argument("-dd",  "--datadriven", default=False,action='store_true',  help="Use DataDriven Method")
     args = parser.parse_args()
 
     ROOT.gStyle.SetFrameLineWidth(2)
@@ -195,7 +197,7 @@ if __name__ == "__main__":
     for ivar,var in enumerate(filelist.keys()):
     #for ivar,var in enumerate(cat.vars.keys()):
         print "Working on file ",filelist[var],"  for variable   ",var
-        file = ROOT.TFile("out/"+filelist[var],"read")
+        file = ROOT.TFile("out"+str(args.input)+"/"+filelist[var],"read")
         #bins=HAA_Inc_mmmt.binning + HAA
          
         #for catname in enumerate():
@@ -260,6 +262,18 @@ if __name__ == "__main__":
 
             #data
             hData = category.Get("data_obs")
+            if args.datadriven:
+                hFF1 = category.Get("FF_1")
+                hFF2 = category.Get("FF_2")
+                hFF12 = category.Get("FF_12")
+                hFF = hFF1.Clone()
+                hFF.SetTitle("jetFakes")
+                hFF.Add(hFF2)
+                hFF.Add(hFF12,-1)
+                #hFF.Add(hFF12,-1)
+                hFF.SetLineColor(1)
+                hFF.SetFillStyle(1001)
+                hFF.SetFillColor(ROOT.TColor.GetColor("#CF8AC8"))
 
 
             
@@ -287,16 +301,28 @@ if __name__ == "__main__":
             hrareBackground.SetTitle("rare")
 
             #for ratio
-            hbkgtot = hBackground.Clone()
+            if not args.datadriven:
+                hbkgtot = hBackground.Clone()
+            else:
+                hbkgtot = hFF.Clone()
             #hbkgtot = h3alphBackground.Clone()
             hbkgtot.Add(hirBackground)
             hbkgtot.Add(hrareBackground)
+            hbkgtot.Add(h3alphBackground)
 
             hBkgTot = ROOT.THStack()
-            hBkgTot.Add(hBackground)
-            hBkgTot.Add(hirBackground)
-            hBkgTot.Add(hrareBackground)
-            #hBkgTot.Add(h3alphBackground)
+            if not args.datadriven:
+                hBkgTot.Add(hBackground)
+                hBkgTot.Add(hirBackground)
+                hBkgTot.Add(hrareBackground)
+                hBkgTot.Add(h3alphBackground)
+            else:
+                hBkgTot.Add(hFF)
+                hBkgTot.Add(hirBackground)
+                hBkgTot.Add(hrareBackground)
+                hBkgTot.Add(h3alphBackground)
+                
+
 
 
             H = 600
@@ -362,17 +388,20 @@ if __name__ == "__main__":
 
             pad1.Draw()
             pad1.cd()
-            lumi=add_lumi()
+            lumi=add_lumi("2016")
             cms=add_CMS()
             pre=add_Preliminary()
             xR=0.65
             l=ROOT.TLegend(xR,0.55,xR+0.28,0.9);
             l.AddEntry(hData)
             l.AddEntry(hSignal)
-            l.AddEntry(hBackground)
+            if not args.datadriven:
+                l.AddEntry(hBackground)
+            else:
+                l.AddEntry(hFF)
+            l.AddEntry(h3alphBackground)
             l.AddEntry(hirBackground)
             l.AddEntry(hrareBackground)
-            #l.AddEntry(h3alphBackground)
 
             #print "signal entries   ",hSignal.GetEntries()
             hData.SetTitle("")

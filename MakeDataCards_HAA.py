@@ -14,6 +14,7 @@
 '''
 #########################
 import sys
+import os
 import ROOT
 import numpy as np
 #import argsparse
@@ -259,37 +260,26 @@ def createUnrolledHistogram(cat,numvar,filelist,process,variable,weight,filedict
     return
 
 
-def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,commonweight):
+def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,commonweight,datadrivenPackage):
             
 
-    #do I need to use branches?
-    #need a temp variable per new variable to fill each event
     newVarVals={}
     for var in HAA_Inc_mmmt.newvariables.keys():
         newVarVals[var]=0.0
 
     
     for ievt, evt in enumerate(tree):
-        #copy the standard weights... will add scale factors to this later 
 
         #do stuffs with  tree  
         if ievt % 1000 == 0:
             print "processing event ",ievt
-        
-        #this won't work... how do I update variables per event?? just make a new tree and shit?? but that is basically nanoAOD!
-        #evt.pt_1 = evt.pt_1 +30.0
-        #new variable mll - mtt
-        #mllmtt = evt.mll - evt.mtt 
-        #mllmtt = getattr(evt,"mll",None) - getattr(evt,"m_vis",None)
-        #newVars["mll-mtt"]= getattr(evt,"mll",None) - getattr(evt,"m_vis",None)
-        #newVars["mll-mtt"]= fun["-"][getattr(evt,"mll",None),getattr(evt,"m_vis",None)]
 
         weightfinal = commonweight
         #find weight from string
         wtstring = 1.0
         for wts in weightstring:
             wtstring = wtstring * abs(getattr(evt,wts[0],None))
-        #weightfinal = weightfinal * wtstring
+
         #fill histograms 
 
         for cat in allcats:
@@ -303,13 +293,11 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                 weightfinal = commonweight
                 for scalefactor in weightDict.keys():
                     if scalefactor == "nevents":
-                        #weightfinal =  weightfinal+"*"+"("+"1/"+str(weightDict[scalefactor])+")"
                         weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
                     else:
-                        #weightfinal =  weightfinal+"*"+str(weightDict[scalefactor])
                         weightfinal =  weightfinal * float(weightDict[scalefactor])
                     
-                #combining all the cuts 
+                #combining all the cuts ... what about the new variables??
                 cuts = []
                 for cuttype in cat.cuts.keys():
                     for cut in cat.cuts[cuttype]:
@@ -322,14 +310,69 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
 
                 if process=="data_obs":
                     weightfinal = 1.0   #don't weight the data!!
-                
-                if survive==True:
+
+
+                if ((process=="FF_1" or process=="FF_2" or process=="FF_12") and (datadrivenPackage["bool"])):
+
+                    ffLeg1Bool=cutStringBool(evt,processObj.cuts["FF_1"])
+                    ffLeg2Bool=cutStringBool(evt,processObj.cuts["FF_2"])
+                    ffLeg12Bool=cutStringBool(evt,processObj.cuts["FF_12"])
+
+                    if ffLeg1Bool: 
+                       #weightfinal = datadrivenPackage["fakerate1"].GetBinContent(datadrivenPackage["fakerate1"].FindBin(evt.pt_3))/(1.0000000001 - datadrivenPackage["fakerate1"].GetBinContent(datadrivenPackage["fakerate1"].FindBin(evt.pt_3)))
+                        #weightfinal = datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0)) #const for now
+                        #weightfinal = 0.025/(1-0.025) # from previous paper const
+                        weightfinal = datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)) #const for now
+                    if ffLeg2Bool: 
+                       #weightfinal = datadrivenPackage["fakerate2"].GetBinContent(datadrivenPackage["fakerate2"].FindBin(evt.pt_4))/(1.0000000001 - datadrivenPackage["fakerate2"].GetBinContent(datadrivenPackage["fakerate2"].FindBin(evt.pt_4)))
+                        #weightfinal = datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0)) #const for now
+                        #weightfinal = .17/(1-0.17) # from previous paper const
+                        weightfinal = datadrivenPackage["pseudofit2"].Eval(evt.pt_4)/(1.0000001-datadrivenPackage["pseudofit2"].Eval(evt.pt_4)) #const for now
+                    if ffLeg12Bool: 
+                       #weightfinal = (datadrivenPackage["fakerate1"].GetBinContent(datadrivenPackage["fakerate1"].FindBin(evt.pt_3))/(1.0000000001 - datadrivenPackage["fakerate1"].GetBinContent(datadrivenPackage["fakerate1"].FindBin(evt.pt_3))))*(datadrivenPackage["fakerate2"].GetBinContent(datadrivenPackage["fakerate2"].FindBin(evt.pt_4))/(1.0000000001 - datadrivenPackage["fakerate2"].GetBinContent(datadrivenPackage["fakerate2"].FindBin(evt.pt_4))))
+                        #weightfinal = (datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0)))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0))) #const for now
+                        #weightfinal = (0.025/(1-0.025))*(.17/(1-0.17))
+                        weightfinal = (datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)))*(datadrivenPackage["pseudofit2"].Eval(evt.pt_4)/(1.0000001-datadrivenPackage["pseudofit2"].Eval(evt.pt_4))) #const for now
+
+                    if(ffLeg1Bool or ffLeg2Bool or ffLeg12Bool): 
+                        for var in newVarVals.keys():
+                            #print cat.newvariables[var][1]
+                            #print var+":"+cat.name+":"+process
+                            temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+
+                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            if type(temp)==float:
+                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            if type(temp)==list:
+                                print "for tlorentz objects"
+                                for var,ivar in enumerate(temp):
+                                    newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+
+                        for variableHandle in cat.vars.keys():
+                            val = getattr(evt,cat.vars[variableHandle][0],None)
+                            filedict[variableHandle].cd()
+                            filedict[variableHandle].cd(cat.name)
+                            if not val==None:
+                                histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+
+                    continue  # for FF we don't want to compare to regular cuts
+
+
+                if ((process!="FF" or process!="FF_1" or process!="FF_2" or process!="FF_12")and (survive==True)):
 
                     #fill the new variables 
                     for var in newVarVals.keys():
                         #print cat.newvariables[var][1]
                         #print var+":"+cat.name+":"+process
+                        temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+
                         newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                        if type(temp)==float:
+                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                        if type(temp)==list:
+                            print "for tlorentz objects"
+                            for var,ivar in enumerate(temp):
+                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
 
                     #fill the current variables
                     #for variable in cat.variables:
@@ -378,8 +421,14 @@ if __name__ == "__main__":
     #parser = argsparse.ArgumentParser(description="make datacards")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
     #args = parser.parse_args()
-    #loader = 
-    categories = []
+    import argparse
+
+    parser = argparse.ArgumentParser(description="This file generates root files containing Histograms ... files in utils contain selections and settings")
+    #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
+    parser.add_argument("-o",  "--outname", default="",  help="postfix string")
+    parser.add_argument("-dd",  "--datadriven", default=False,action='store_true',  help="Use DataDriven Method")
+    args = parser.parse_args()
+
 
     #gather all the analysis categories
     from utils.Categories import allcats
@@ -417,7 +466,7 @@ if __name__ == "__main__":
 
     print "initializing histograms"
     
-
+    os.mkdir("out"+str(args.outname))
     filedict = {}
     histodict = {}
     newhistodict = {}
@@ -429,7 +478,7 @@ if __name__ == "__main__":
         #variable=fullvariable.split(":") # for the unrolled cases
 
         #filedict[variable[0]]=ROOT.TFile.Open(cat.name+"_"+str(variable[0])+".root","RECREATE")
-        filedict[variableHandle]=ROOT.TFile.Open("out/"+str(variableHandle)+".root","RECREATE")
+        filedict[variableHandle]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variableHandle)+".root","RECREATE")
         #print "on variableHandle ",variableHandle
         filedict[variableHandle].cd()
         for cat in allcats:
@@ -463,7 +512,7 @@ if __name__ == "__main__":
     for variable in HAA_Inc_mmmt.newvariables.keys():
 
         #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
-        filedict[variable]=ROOT.TFile.Open("out/"+str(variable)+".root","RECREATE")
+        filedict[variable]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variable)+".root","RECREATE")
         #print "on variable ",variable
         filedict[variable].cd()
         for cat in allcats:
@@ -483,8 +532,15 @@ if __name__ == "__main__":
                         bins = HAA_Inc_mmmt.newvariables[variable][1]
                         tmpbin = np.asarray(bins)
                         #print variable+":"+cat.name+":"+process
-                        newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                        newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        if  HAA_Inc_mmmt.newvariables[variable][-1]=="multiob":
+                            for var,ivar in enumerate(temp):
+                                newhistodict[variable+"_"+str(ivar)+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin[ivar])-1,tmpbin[ivar])
+                                newhistodict[variable+"_"+str(ivar)+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        else:
+                            newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                            newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        #newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                        #newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
         numvar=numvar+1
 
     #gather extra global variables or weights
@@ -496,6 +552,62 @@ if __name__ == "__main__":
 
     #Calculate the scale factors and fill the histograms 
     #print sampleDict.keys()
+
+    datadriven = args.datadriven
+    datadrivenPackage={}
+    datadrivenPackage["bool"]=datadriven
+    if datadriven:
+        #load necessary histograms
+            ff_file_3 = ROOT.TFile.Open("FFhistos/pt_3.root")
+            ff_file_4 = ROOT.TFile.Open("FFhistos/pt_4.root")
+            #sstight_3 = ff_file_3.Get("mmmt_inclusive_FF_tight_SS/data_obs")
+            #sstight_4 = ff_file_4.Get("mmmt_inclusive_FF_tight_SS/data_obs")
+            #ssloose_3 = ff_file_3.Get("mmmt_inclusive_FF_loose_SS/data_obs")
+            #ssloose_4 = ff_file_4.Get("mmmt_inclusive_FF_loose_SS/data_obs")
+            #osloose_3 = ff_file_3.Get("mmmt_inclusive_FF_loose_OS/data_obs")
+            #osloose_4 = ff_file_4.Get("mmmt_inclusive_FF_loose_OS/data_obs")
+            ss_1_tight = ff_file_3.Get("mmmt_inclusive_FF_SS_1_tight/data_obs")
+            ss_1_loose = ff_file_3.Get("mmmt_inclusive_FF_SS_1_loose/data_obs")
+            ss_2_tight = ff_file_4.Get("mmmt_inclusive_FF_SS_2_tight/data_obs")
+            ss_2_loose = ff_file_4.Get("mmmt_inclusive_FF_SS_2_loose/data_obs")
+            
+            #f_1 = sstight_3.Clone()
+            f_1= ss_1_tight.Clone()
+            #f_1.Divide(ssloose_3)
+            f_1.Divide(ss_1_loose)
+            f_1.SetName("FakeRateMuLeg")
+            f_2 = ss_2_tight.Clone()
+            f_2.Divide(ss_2_loose)
+            f_2.SetName("FakeRateTauLeg")
+
+            #tf_1 = ROOT.TF1("tf_1","[0]*expo[1]",f_1.GetXaxis().GetXmin(),f_1.GetXaxis().GetXmax()) 
+            #tf_2 = ROOT.TF1("tf_2","[0]*expo[1]",f_2.GetXaxis().GetXmin(),f_2.GetXaxis().GetXmax()) 
+            tf_1 = ROOT.TF1("tf_1","[0]",f_1.GetXaxis().GetXmin(),f_1.GetXaxis().GetXmax()) 
+            tf_2 = ROOT.TF1("tf_2","[0]",f_2.GetXaxis().GetXmin(),f_2.GetXaxis().GetXmax()) 
+
+            fakemeasurefile = ROOT.TFile.Open("FFhistos/fakemeasure.root","RECREATE")
+            fakemeasurefile.cd()
+            f_1.Fit("tf_1")
+            f_2.Fit("tf_2")
+            f_1.Write(f_1.GetName(),ROOT.TObject.kOverwrite)
+            f_2.Write(f_2.GetName(),ROOT.TObject.kOverwrite)
+            tf_1.Write(tf_1.GetName(),ROOT.TObject.kOverwrite)
+            tf_2.Write(tf_2.GetName(),ROOT.TObject.kOverwrite)
+            datadrivenPackage["fakerate1"]=f_1
+            datadrivenPackage["fakerate2"]=f_2
+            datadrivenPackage["fitrate1"]=tf_1
+            datadrivenPackage["fitrate2"]=tf_2
+            applyf = ROOT.TFile.Open("FFhistos/ffmeas.root","READ")
+            applyf.cd()
+            pg1 = applyf.Get("mupoints")
+            pg2 = applyf.Get("taupoints")
+            pf1 = ROOT.TF1("pf1","[0]*exp([1]*x)+[2]",0,100) 
+            pf2 = ROOT.TF1("pf2","[0]*exp([1]*x)+[2]",0,100) 
+            pg1.Fit("pf1")
+            pg2.Fit("pf2")
+            datadrivenPackage["pseudofit1"]=pf1
+            datadrivenPackage["pseudofit2"]=pf2
+
     for nickname in filelist.keys():
 
         fin = ROOT.TFile.Open(dir+filelist[nickname],"read")
@@ -508,21 +620,21 @@ if __name__ == "__main__":
         #processes = HAA_processes[nickname].cuts
         processObj = HAA_processes[nickname]
 
-        calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,weight)
+        calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,weight,datadrivenPackage)
         
      
                 
     print "writing the histograms to the file"
     for varcatPro in histodict.keys():
         #print "file ",filedict[varcatPro.split(":")[0]].GetName()," contents ",filedict[varcatPro.split(":")[0]].ls()
-        print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",histodict[varcatPro].GetEntries()
+        #print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",histodict[varcatPro].GetEntries()
         filedict[varcatPro.split(":")[0]].cd()
         filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
         histodict[varcatPro].Write(histodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
     print "writing the histograms to the file"
     for varcatPro in newhistodict.keys():
         #print "file ",filedict[varcatPro.split(":")[0]].GetName()," contents ",filedict[varcatPro.split(":")[0]].ls()
-        print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",newhistodict[varcatPro].GetEntries()
+        #print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",newhistodict[varcatPro].GetEntries()
         filedict[varcatPro.split(":")[0]].cd()
         filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
         newhistodict[varcatPro].Write(newhistodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
