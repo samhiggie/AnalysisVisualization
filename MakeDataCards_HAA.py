@@ -380,7 +380,11 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                         #move this outside variables
       
                         #obtaining the right variable... WHAT about changed variables in the event!!?
-                        val = getattr(evt,cat.vars[variableHandle][0],None)
+                        if cat.vars[variableHandle][0] in ["njets","jpt_1","jeta_1","jpt_2","jeta_2","bpt_1","bpt_2","nbtag","beta_1","beta_2"]:
+                            val = getattr(evt,cat.vars[variableHandle][0],None)[0]
+                        else:
+                            val = getattr(evt,cat.vars[variableHandle][0],None)
+                        #val = getattr(evt,cat.vars[variableHandle][0],None)
                         filedict[variableHandle].cd()
                         filedict[variableHandle].cd(cat.name)
                         #Fix the weight problem!!!
@@ -444,7 +448,7 @@ if __name__ == "__main__":
 
     #Gather the Analysis Files
     #dir = "/eos/user/s/shigginb/HAA_ntuples/March_2020/"
-    dir = "/eos/home-s/shigginb/HAA_ntuples/March_2020/"
+    dir = "/eos/home-s/shigginb/HAA_ntuples/June2020/"
     #filelist = HAA
     filelist = {}
 
@@ -459,7 +463,7 @@ if __name__ == "__main__":
     #Gather the analysis datasets and info 
     sampleDict = {}
  
-    with open("MCsamples_2016.csv")  as csvfile:
+    with open("MCsamples_2016_v6_sam.csv")  as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         for row in reader:
             sampleDict[row[0]] = [row[1],row[2],row[3],row[4],row[5],row[6]]

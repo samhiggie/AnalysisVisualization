@@ -19,6 +19,7 @@ from Parametrization import Process
 
 #This is a list of Process objects
 HAA_processes={}
+HAA_signals={}
 HAA_processes_test={}
 
 #Gathering extra information
@@ -26,7 +27,7 @@ HAA_processes_test={}
 #Gather the analysis datasets and info 
 sampleDict = {}
 
-with open("/afs/cern.ch/work/s/shigginb/cmssw/HAA/ZH_Run2_10_2_9/src/AnalysisVisualization/MCsamples_2016.csv")  as csvfile:
+with open("/afs/cern.ch/work/s/shigginb/cmssw/HAA/HAA_Run2_May2020_10_2_9/src/AnalysisVisualization/MCsamples_2016_v6_sam.csv")  as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     for row in reader:
         #[nickname]        = [category,xsec,numberOfEvents,finishedEvents,idk?,DASDataset]
@@ -65,16 +66,6 @@ with open("/afs/cern.ch/work/s/shigginb/cmssw/HAA/ZH_Run2_10_2_9/src/AnalysisVis
 #HToAAToMuMuTauTau_M45_2016.root  TTWZ_2016.root
 
 
-a40test = Process()
-a40test.nickname = "HToAAToMuMuTauTau_M40"
-a40test.plotname = "a40"
-a40test.weights = {"xsec":1,"nevents":250000,"theoryXsec":(31.05*0.00005)} #higgs xsec [pb] * 2hdm type Branching ratio
-a40test.cuts = {"a40":""}
-a40test.file = "HToAAToMuMuTauTau_M40_2016.root"
-a40test.classification = sampleDict[a40test.nickname][3]
-a40test.color = [ROOT.kRed]    #do i need a list here??? to embed it
-HAA_processes_test[a40test.nickname]=a40test
-    
 data = Process()
 data.nickname = "data"
 data.plotname = "data"
@@ -83,7 +74,7 @@ data.cuts = {"data_obs":""}
 data.file = "data.root"
 data.classification = "data_obs"
 data.color = [ROOT.kBlack]    #do i need a list here??? to embed it
-HAA_processes[data.nickname]=data
+#HAA_processes[data.nickname]=data
 
 #This is a very special case ... datadriven approach where we have 3 different regions 
 #FF_1 leg 1 fails invert muon criteria 
@@ -98,7 +89,7 @@ FF.cuts = {"FF":"","FF_1":[ffbasecuts[0],["mediumId_3","<",1],["isGlobal_3","<",
 FF.file = "data.root"
 FF.classification = "FF"
 #FF.color = [ROOT.kBlack]    #do i need a list here??? to embed it
-HAA_processes[FF.nickname]=FF
+#HAA_processes[FF.nickname]=FF
 
 a15 = Process()
 a15.nickname = "HToAAToMuMuTauTau_M15"
@@ -109,6 +100,7 @@ a15.file = "HToAAToMuMuTauTau_M15_2016.root"
 a15.classification = sampleDict[a15.nickname][3]
 a15.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a15.nickname]=a15
+HAA_signals[a15.nickname]=a15
 
 a20 = Process()
 a20.nickname = "HToAAToMuMuTauTau_M20"
@@ -119,6 +111,7 @@ a20.file = "HToAAToMuMuTauTau_M20_2016.root"
 a20.classification = sampleDict[a20.nickname][3]
 a20.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a20.nickname]=a20
+HAA_signals[a20.nickname]=a20
 
 a25 = Process()
 a25.nickname = "HToAAToMuMuTauTau_M25"
@@ -129,6 +122,7 @@ a25.file = "HToAAToMuMuTauTau_M25_2016.root"
 a25.classification = sampleDict[a25.nickname][3]
 a25.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a25.nickname]=a25
+HAA_signals[a25.nickname]=a25
 
 a30 = Process()
 a30.nickname = "HToAAToMuMuTauTau_M30"
@@ -139,6 +133,7 @@ a30.file = "HToAAToMuMuTauTau_M30_2016.root"
 a30.classification = sampleDict[a30.nickname][3]
 a30.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a30.nickname]=a30
+HAA_signals[a30.nickname]=a30
 
 a35 = Process()
 a35.nickname = "HToAAToMuMuTauTau_M35"
@@ -149,6 +144,7 @@ a35.file = "HToAAToMuMuTauTau_M35_2016.root"
 a35.classification = sampleDict[a35.nickname][3]
 a35.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a35.nickname]=a35
+HAA_signals[a35.nickname]=a35
 
 a40 = Process()
 a40.nickname = "HToAAToMuMuTauTau_M40"
@@ -159,6 +155,7 @@ a40.file = "HToAAToMuMuTauTau_M40_2016.root"
 a40.classification = sampleDict[a40.nickname][3]
 a40.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a40.nickname]=a40
+HAA_signals[a40.nickname]=a40
 
 a45 = Process()
 a45.nickname = "HToAAToMuMuTauTau_M45"
@@ -169,6 +166,7 @@ a45.file = "HToAAToMuMuTauTau_M45_2016.root"
 a45.classification = sampleDict[a45.nickname][3]
 a45.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a45.nickname]=a45
+HAA_signals[a45.nickname]=a45
 
 a50 = Process()
 a50.nickname = "HToAAToMuMuTauTau_M50"
@@ -179,6 +177,7 @@ a50.file = "HToAAToMuMuTauTau_M50_2016.root"
 a50.classification = sampleDict[a50.nickname][3]
 a50.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a50.nickname]=a50
+HAA_signals[a50.nickname]=a50
 
 a55 = Process()
 a55.nickname = "HToAAToMuMuTauTau_M55"
@@ -189,6 +188,7 @@ a55.file = "HToAAToMuMuTauTau_M55_2016.root"
 a55.classification = sampleDict[a55.nickname][3]
 a55.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a55.nickname]=a55
+HAA_signals[a55.nickname]=a55
 
 a60 = Process()
 a60.nickname = "HToAAToMuMuTauTau_M60"
@@ -199,12 +199,13 @@ a60.file = "HToAAToMuMuTauTau_M60_2016.root"
 a60.classification = sampleDict[a60.nickname][0]
 a60.color = [ROOT.kRed]    #do i need a list here??? to embed it
 HAA_processes[a60.nickname]=a60
+HAA_signals[a60.nickname]=a60
 
 GluGluToContinToZZTo2mu2tau = Process()
-GluGluToContinToZZTo2mu2tau.nickname = "GluGluToContinToZZTo2mu2tau"
-GluGluToContinToZZTo2mu2tau.plotname = "GluGluToContinToZZTo2mu2tau"
+GluGluToContinToZZTo2mu2tau.nickname = "GluGluTo2mu2tau"
+GluGluToContinToZZTo2mu2tau.plotname = "GluGluTo2mu2tau"
 GluGluToContinToZZTo2mu2tau.weights = {"xsec":sampleDict[GluGluToContinToZZTo2mu2tau.nickname][1],"nevents":sampleDict[GluGluToContinToZZTo2mu2tau.nickname][3]} 
-GluGluToContinToZZTo2mu2tau.cuts = {"GluGluToContinToZZTo2mu2tau":""}
+GluGluToContinToZZTo2mu2tau.cuts = {"GluGluTo2mu2tau":""}
 GluGluToContinToZZTo2mu2tau.file = GluGluToContinToZZTo2mu2tau.nickname+"_2016.root"
 GluGluToContinToZZTo2mu2tau.classification = sampleDict[GluGluToContinToZZTo2mu2tau.nickname][3]
 GluGluToContinToZZTo2mu2tau.color = ["#65E114"]    #do i need a list here??? to embed it
@@ -240,15 +241,15 @@ WWZ.classification = sampleDict[WWZ.nickname][3]
 WWZ.color = ["#65E114"]    #do i need a list here??? to embed it
 HAA_processes[WWZ.nickname]=WWZ
 
-HZJ = Process()
-HZJ.nickname = "HZJ"
-HZJ.plotname = "HZJ"
-HZJ.weights = {"xsec":sampleDict[HZJ.nickname][1],"nevents":sampleDict[HZJ.nickname][3]} 
-HZJ.cuts = {"HZJ":""}
-HZJ.file = HZJ.nickname+"_2016.root"
-HZJ.classification = sampleDict[HZJ.nickname][3]
-HZJ.color = ["#65E114"]    #do i need a list here??? to embed it
-HAA_processes[HZJ.nickname]=HZJ
+#HZJ = Process()
+#HZJ.nickname = "HZJ"
+#HZJ.plotname = "HZJ"
+#HZJ.weights = {"xsec":sampleDict[HZJ.nickname][1],"nevents":sampleDict[HZJ.nickname][3]} 
+#HZJ.cuts = {"HZJ":""}
+#HZJ.file = HZJ.nickname+"_2016.root"
+#HZJ.classification = sampleDict[HZJ.nickname][3]
+#HZJ.color = ["#65E114"]    #do i need a list here??? to embed it
+#HAA_processes[HZJ.nickname]=HZJ
 
 ZZZ = Process()
 ZZZ.nickname = "ZZZ"
@@ -281,7 +282,7 @@ ZZ.color = ["#13E2FE"]    #do i need a list here??? to embed it
 HAA_processes[ZZ.nickname]=ZZ
 
 ZZext = Process()
-ZZext.nickname = "ZZext"
+ZZext.nickname = "ZZ_ext1"
 ZZext.plotname = "ZZ"
 ZZext.weights = {"xsec":sampleDict[ZZext.nickname][1],"nevents":sampleDict[ZZext.nickname][3]} 
 ZZext.cuts = {"ZZ":""}
@@ -291,7 +292,7 @@ ZZext.color = ["#13E2FE"]    #do i need a list here??? to embed it
 HAA_processes[ZZext.nickname]=ZZext
 
 DY = Process()
-DY.nickname = "DYJetsToLL"
+DY.nickname = "DYJetsToLLext1"
 DY.plotname = "ZTT"
 DY.weights = {"xsec":sampleDict[DY.nickname][1],"nevents":sampleDict[DY.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
 DY.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
@@ -301,7 +302,7 @@ DY.color = ["#CF8AC8"]    #do i need a list here??? to embed it
 HAA_processes[DY.nickname]=DY
 
 DYext = Process()
-DYext.nickname = "DYJetsToLLext"
+DYext.nickname = "DYJetsToLLext2"
 DYext.plotname = "ZTT"
 DYext.weights = {"xsec":sampleDict[DYext.nickname][1],"nevents":sampleDict[DYext.nickname][3]} #higgs xsec [pb] * 2hdm type Branching ratio
 DYext.cuts = {"Z":"","ZTT":[["gen_match_4","==",5]],"ZL":[["gen_match_4",">=",5]],"ZJ":[["gen_match_4",">",5]]} #higgs xsec [pb] * 2hdm type Branching ratio
@@ -401,7 +402,7 @@ W2Jets.color = ["#CF8AC8"]
 HAA_processes[W2Jets.nickname]=W2Jets
 
 W2Jetsext = Process()
-W2Jetsext.nickname = "W2JetsToLNuext"
+W2Jetsext.nickname = "W2JetsToLNuext1"
 W2Jetsext.plotname = "W"
 W2Jetsext.weights = {"xsec":sampleDict[W2Jetsext.nickname][1],"nevents":sampleDict[W2Jetsext.nickname][3]}
 W2Jetsext.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
@@ -421,7 +422,7 @@ W3Jets.color = ["#CF8AC8"]
 HAA_processes[W3Jets.nickname]=W3Jets
 
 W3Jetsext = Process()
-W3Jetsext.nickname = "W3JetsToLNuext"
+W3Jetsext.nickname = "W3JetsToLNu_ext1"
 W3Jetsext.plotname = "W"
 W3Jetsext.weights = {"xsec":sampleDict[W3Jetsext.nickname][1],"nevents":sampleDict[W3Jetsext.nickname][3]}
 W3Jetsext.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
@@ -440,25 +441,25 @@ W4Jets.classification = sampleDict[W4Jets.nickname][3]
 W4Jets.color = ["#CF8AC8"]    
 HAA_processes[W4Jets.nickname]=W4Jets
 
-W4Jetsext1 = Process()
-W4Jetsext1.nickname = "W4JetsToLNuext1"
-W4Jetsext1.plotname = "W"
-W4Jetsext1.weights = {"xsec":sampleDict[W4Jetsext1.nickname][1],"nevents":sampleDict[W4Jetsext1.nickname][3]}
-W4Jetsext1.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
-W4Jetsext1.file = W4Jetsext1.nickname+"_2016.root"
-W4Jetsext1.classification = sampleDict[W4Jetsext1.nickname][3]
-W4Jetsext1.color = ["#CF8AC8"]    
-HAA_processes[W4Jetsext1.nickname]=W4Jetsext1
+#W4Jetsext1 = Process()
+#W4Jetsext1.nickname = "W4JetsToLNu_ext1"
+#W4Jetsext1.plotname = "W"
+#W4Jetsext1.weights = {"xsec":sampleDict[W4Jetsext1.nickname][1],"nevents":sampleDict[W4Jetsext1.nickname][3]}
+#W4Jetsext1.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
+#W4Jetsext1.file = W4Jetsext1.nickname+"_2016.root"
+#W4Jetsext1.classification = sampleDict[W4Jetsext1.nickname][3]
+#W4Jetsext1.color = ["#CF8AC8"]    
+#HAA_processes[W4Jetsext1.nickname]=W4Jetsext1
 
-W4Jetsext2 = Process()
-W4Jetsext2.nickname = "W4JetsToLNuext2"
-W4Jetsext2.plotname = "W"
-W4Jetsext2.weights = {"xsec":sampleDict[W4Jetsext2.nickname][1],"nevents":sampleDict[W4Jetsext2.nickname][3]}
-W4Jetsext2.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
-W4Jetsext2.file = W4Jetsext2.nickname+"_2016.root"
-W4Jetsext2.classification = sampleDict[W4Jetsext2.nickname][3]
-W4Jetsext2.color = ["#CF8AC8"]    
-HAA_processes[W4Jetsext2.nickname]=W4Jetsext2
+#W4Jetsext2 = Process()
+#W4Jetsext2.nickname = "W4JetsToLNu_ext2"
+#W4Jetsext2.plotname = "W"
+#W4Jetsext2.weights = {"xsec":sampleDict[W4Jetsext2.nickname][1],"nevents":sampleDict[W4Jetsext2.nickname][3]}
+#W4Jetsext2.cuts = {"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]} 
+#W4Jetsext2.file = W4Jetsext2.nickname+"_2016.root"
+#W4Jetsext2.classification = sampleDict[W4Jetsext2.nickname][3]
+#W4Jetsext2.color = ["#CF8AC8"]    
+#HAA_processes[W4Jetsext2.nickname]=W4Jetsext2
 
 TTJets_1LT = Process()
 TTJets_1LT.nickname = "TTJets_1LT"
@@ -501,7 +502,7 @@ ST_s.color = ["#CF8AC8"]
 HAA_processes[ST_s.nickname]=ST_s
 
 ST_tW_antitop = Process()
-ST_tW_antitop.nickname = "ST_tW_antitop"
+ST_tW_antitop.nickname = "ST_tW_antitop_ext1"
 ST_tW_antitop.plotname = "ST"
 ST_tW_antitop.weights = {"xsec":sampleDict[ST_tW_antitop.nickname][1],"nevents":sampleDict[ST_tW_antitop.nickname][3]}
 ST_tW_antitop.cuts = {"ST":"","STT":[["gen_match_4","==",5]],"STL":[["gen_match_4",">=",5]],"STJ":[["gen_match_4",">",5]]} 
@@ -511,7 +512,7 @@ ST_tW_antitop.color = ["#CF8AC8"]
 HAA_processes[ST_tW_antitop.nickname]=ST_tW_antitop
 
 ST_tW_top = Process()
-ST_tW_top.nickname = "ST_tW_top"
+ST_tW_top.nickname = "ST_tW_top_ext1"
 ST_tW_top.plotname = "ST"
 ST_tW_top.weights = {"xsec":sampleDict[ST_tW_top.nickname][1],"nevents":sampleDict[ST_tW_top.nickname][3]}
 ST_tW_top.cuts = {"ST":"","STT":[["gen_match_4","==",5]],"STL":[["gen_match_4",">=",5]],"STJ":[["gen_match_4",">",5]]} 
@@ -623,7 +624,7 @@ TTGamma_2L.color = ["#CF8AC8"]
 HAA_processes[TTGamma_2L.nickname]=TTGamma_2L
 
 TTHH = Process()
-TTHH.nickname = "TTHH"
+TTHH.nickname = "TTHH_ext1"
 TTHH.plotname = "TT"
 TTHH.weights = {"xsec":sampleDict[TTHH.nickname][1],"nevents":sampleDict[TTHH.nickname][3]}
 TTHH.cuts = {"rare":""} 
@@ -643,7 +644,7 @@ TTTT.color = ["#CF8AC8"]
 HAA_processes[TTTT.nickname]=TTTT
 
 TTTJ = Process()
-TTTJ.nickname = "TTTJ"
+TTTJ.nickname = "TTTJ_ext1"
 TTTJ.plotname = "TT"
 TTTJ.weights = {"xsec":sampleDict[TTTJ.nickname][1],"nevents":sampleDict[TTTJ.nickname][3]}
 TTTJ.cuts = {"rare":""} 
@@ -653,7 +654,7 @@ TTTJ.color = ["#CF8AC8"]
 HAA_processes[TTTJ.nickname]=TTTJ
 
 TTTW = Process()
-TTTW.nickname = "TTTW"
+TTTW.nickname = "TTTW_ext1"
 TTTW.plotname = "TT"
 TTTW.weights = {"xsec":sampleDict[TTTW.nickname][1],"nevents":sampleDict[TTTW.nickname][3]}
 TTTW.cuts = {"rare":""} 
@@ -663,7 +664,7 @@ TTTW.color = ["#CF8AC8"]
 HAA_processes[TTTW.nickname]=TTTW
 
 TTW = Process()
-TTW.nickname = "TTW"
+TTW.nickname = "TTWJetsToLNu_ext1"
 TTW.plotname = "TT"
 TTW.weights = {"xsec":sampleDict[TTW.nickname][1],"nevents":sampleDict[TTW.nickname][3]}
 TTW.cuts = {"rare":""} 
@@ -671,6 +672,16 @@ TTW.file = TTW.nickname+"_2016.root"
 TTW.classification = sampleDict[TTW.nickname][3]
 TTW.color = ["#CF8AC8"]    
 HAA_processes[TTW.nickname]=TTW
+
+TTWext2 = Process()
+TTWext2.nickname = "TTWJetsToLNu_ext2"
+TTWext2.plotname = "TT"
+TTWext2.weights = {"xsec":sampleDict[TTWext2.nickname][1],"nevents":sampleDict[TTWext2.nickname][3]}
+TTWext2.cuts = {"rare":""} 
+TTWext2.file = TTWext2.nickname+"_2016.root"
+TTWext2.classification = sampleDict[TTWext2.nickname][3]
+TTWext2.color = ["#CF8AC8"]    
+HAA_processes[TTWext2.nickname]=TTWext2
 
 TTWJetsToQQ = Process()
 TTWJetsToQQ.nickname = "TTWJetsToQQ"
@@ -683,7 +694,7 @@ TTWJetsToQQ.color = ["#CF8AC8"]
 HAA_processes[TTWJetsToQQ.nickname]=TTWJetsToQQ
 
 TTWW = Process()
-TTWW.nickname = "TTWW"
+TTWW.nickname = "TTWW_ext1"
 TTWW.plotname = "TT"
 TTWW.weights = {"xsec":sampleDict[TTWW.nickname][1],"nevents":sampleDict[TTWW.nickname][3]}
 TTWW.cuts = {"rare":""} 
@@ -693,7 +704,7 @@ TTWW.color = ["#CF8AC8"]
 HAA_processes[TTWW.nickname]=TTWW
 
 TTWZ = Process()
-TTWZ.nickname = "TTWZ"
+TTWZ.nickname = "TTWZ_ext1"
 TTWZ.plotname = "TT"
 TTWZ.weights = {"xsec":sampleDict[TTWZ.nickname][1],"nevents":sampleDict[TTWZ.nickname][3]}
 TTWZ.cuts = {"rare":""} 
@@ -703,7 +714,7 @@ TTWZ.color = ["#CF8AC8"]
 HAA_processes[TTWZ.nickname]=TTWZ
 
 TTZH = Process()
-TTZH.nickname = "TTZH"
+TTZH.nickname = "TTZH_ext1"
 TTZH.plotname = "TT"
 TTZH.weights = {"xsec":sampleDict[TTZH.nickname][1],"nevents":sampleDict[TTZH.nickname][3]}
 TTZH.cuts = {"rare":""} 
@@ -713,7 +724,7 @@ TTZH.color = ["#CF8AC8"]
 HAA_processes[TTZH.nickname]=TTZH
 
 TTZZ = Process()
-TTZZ.nickname = "TTZZ"
+TTZZ.nickname = "TTZZ_ext1"
 TTZZ.plotname = "TT"
 TTZZ.weights = {"xsec":sampleDict[TTZZ.nickname][1],"nevents":sampleDict[TTZZ.nickname][3]}
 TTZZ.cuts = {"rare":""} 
@@ -733,7 +744,7 @@ WW.color = ["#CF8AC8"]
 HAA_processes[WW.nickname]=WW
 
 WWext = Process()
-WWext.nickname = "WWext"
+WWext.nickname = "WWext1"
 WWext.plotname = "TT"
 WWext.weights = {"xsec":sampleDict[WWext.nickname][1],"nevents":sampleDict[WWext.nickname][3]}
 WWext.cuts = {"rare":""} 
@@ -751,6 +762,15 @@ WZext.file = WZext.nickname+"_2016.root"
 WZext.classification = sampleDict[WZext.nickname][3]
 WZext.color = ["#CF8AC8"]    
 HAA_processes[WZext.nickname]=WZext
+WZext1 = Process()
+WZext1.nickname = "WZext1"
+WZext1.plotname = "TT"
+WZext1.weights = {"xsec":sampleDict[WZext1.nickname][1],"nevents":sampleDict[WZext1.nickname][3]}
+WZext1.cuts = {"rare":""} 
+WZext1.file = WZext1.nickname+"_2016.root"
+WZext1.classification = sampleDict[WZext1.nickname][3]
+WZext1.color = ["#CF8AC8"]    
+HAA_processes[WZext1.nickname]=WZext1
 #runII legacy SMHTT
 SMHTT = {}
 #data 

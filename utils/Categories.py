@@ -33,7 +33,8 @@ HAA_Inc_mmmt.cuts["preselection"]= [
 ["iso_1","<=",0.2],["iso_2","<=",0.2]]   #
 
 HAA_Inc_mmmt.cuts["categoryCuts"]= [
-["cat","==",6],["AMass",">=",120.],
+#["cat","==",6],["AMass",">=",120.],
+["cat","==",6],
 ["iso_3","<=",0.15],["mediumId_3",">=",1],
 [["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],
 ["idDeepTau2017v2p1VSjet_4",">=",2.]]
@@ -44,7 +45,8 @@ HAA_Inc_mmmt.cuts["categoryCuts"]= [
 #HAA_Inc_mmmt.cuts["trigger"]= [[["triggerWord","band",4],"||",["triggerWord","band",8],"||",["triggerWord","band",16],"||",["triggerWord","band",32]]]   #
 #if the statements are nested like this ... they are ors 
 HAA_Inc_mmmt.cuts["trigger"]=[
-[["OR"],["triggerWord","band",4],["triggerWord","band",8],["triggerWord","band",16],["triggerWord","band",32]]]
+#[["OR"],["triggerWord","band",4],["triggerWord","band",8],["triggerWord","band",16],["triggerWord","band",32]]]
+[["OR"],["muonTriggerWord","band",4],["muonTriggerWord","band",8],["muonTriggerWord","band",16],["muonTriggerWord","band",32]]]
 #[["IF"],[["isTrig_1","==",1],["isTrig_2","==",0]],["THEN"],[["pt_1",">=",28]]]]   #
 
 #new variables that are defined on the fly. These are not in the Tree, but are functions of variables in the tree
@@ -57,7 +59,8 @@ HAA_Inc_mmmt.newvariables["charge_34"] = ["multi",[-2.0,-0.75,0.75,2.0],["q_3","
 HAA_Inc_mmmt.vars = {
         #handle : ["root variable",[binning]or[[binning]],units,label]
         "m_vis":["m_vis",[50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0],"[GeV]","M_{vis}"],
-        "AMass":["AMass",[100.0,120.,140.,160.,180.,200.,220.0,240.0,260.0,280.0,300.0,320.,340.,360.,380.,400.],"[GeV]","M_{4l Tot}"],
+        "AMass_blinded":["AMass",[100.0,120.,140.,160.,180.,200.,220.0,240.0,260.0,280.0,300.0,320.,340.,360.,380.,400.],"[GeV]","M_{4l Tot} Blind"],
+        "AMass":["AMass",[0.0,20.0,40.0,60.0,80.0,100.0,120.,140.,160.,180.,200.,220.0,240.0,260.0,280.0,300.0,320.,340.,360.,380.,400.],"[GeV]","M_{4l Tot}"],
         "mll":["mll",[0.0,10.,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.,100.,110.,120.,130.,140.],"[GeV]","M_{ll}"],
         "pt_1":["pt_1",[0.0,25.0,50.,75.,100.,125.,150.,175.,200.],"[GeV]","#mu_{pt}"],
         "pt_2":["pt_2",[0.0,25.0,50.,75.,100.,125.,150.,175.,200.],"[GeV]","#mu_{pt}"],
@@ -93,6 +96,7 @@ HAA_Inc_mmmt.vars = {
         "phi_4":["phi_4",[[60,-3,3]],"","#phi(l_{4})"],
         "dZ_4":["dZ_4",[[20,-0.2,0.2]],"[cm]","d_{z}(l_{4})"],
         "d0_4":["d0_4",[[20,-0.2,0.2]],"[cm]","d_{xy}(l_{4})"],
+
         "njets":["njets",[[10,-0.5,9.5]],"","nJets"],
         "jpt_1":["jpt_1",[[60,0,300]],"[GeV]","Jet^{1} P_{T}"], 
         "jeta_1":["jeta_1",[[60,-3,3]],"","Jet^{1} #eta"],
@@ -103,6 +107,7 @@ HAA_Inc_mmmt.vars = {
         "nbtag":["nbtag",[[5,-0.5,4.5]],"","nBTag"],
         "beta_1":["beta_1",[[60,-3,3]],"","BJet^{1} #eta"],
         "beta_2":["beta_2",[[60,-3,3]],"","BJet^{2} #eta"],
+
         "met":["met",[[20,0,200]],"[GeV]","#it{p}_{T}^{miss}"], 
         "met_phi":["met_phi",[[60,-3,3]],"","#it{p}_{T}^{miss} #phi"], 
         "puppi_phi":["puppi_phi",[[60,-3,3]],"","PUPPI#it{p}_{T}^{miss} #phi"], 
@@ -428,17 +433,17 @@ HAA_Inc_mmmt_FF_OS_12.cuts["categoryCuts"]= [
 
 ffbasecuts = [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],["eta_4","absl",2.3],[["EQT"],["q_3","q_4"],"mult","<",0],[["EQT"],["q_1","q_2"],"mult","<",0],["iso_1","<=",0.2],["iso_2","<=",0.2],["cat","==",6],["AMass",">=",120.]]
 
-#allcats.append(HAA_Inc_mmmt)
+allcats.append(HAA_Inc_mmmt)
 #current ff here may 8th 2020
 #allcats.append(HAA_Inc_mmmt_FF_SS_1_tight)
 #allcats.append(HAA_Inc_mmmt_FF_SS_1_loose)
 #allcats.append(HAA_Inc_mmmt_FF_SS_2_tight)
 #allcats.append(HAA_Inc_mmmt_FF_SS_2_loose)
 
-allcats.append(HAA_Inc_mmmt_deeptauid_medium)
-allcats.append(HAA_Inc_mmmt_deeptauid_loose)
-allcats.append(HAA_Inc_mmmt_deeptauid_vloose)
-allcats.append(HAA_Inc_mmmt_deeptauid_vvloose)
+#allcats.append(HAA_Inc_mmmt_deeptauid_medium)
+#allcats.append(HAA_Inc_mmmt_deeptauid_loose)
+#allcats.append(HAA_Inc_mmmt_deeptauid_vloose)
+#allcats.append(HAA_Inc_mmmt_deeptauid_vvloose)
 
 
 #allcats.append(HAA_Inc_mmmt_FF_SS_12)
