@@ -3,11 +3,11 @@
 #Author: Sam Higginbotham
 '''
 
-* File Name : MakeDataCards_HAA.py
+* File Name : MakeDataCards_HAA_yaml.py
 
 * Purpose : For Datacard creation. Root file containing histograms that can be used with Combine. This will skim the events 
 
-* Creation Date : 04-02-2020
+* Creation Date : june-20-2020
 
 * Last Modified :
 
@@ -25,6 +25,9 @@ import csv
 import datetime
 import time
 import threading 
+import yaml
+#user definitions 
+from utils.Parametrization import *
 
 #GLOBAL VARIABLES AND FUNCTIONS!
 
@@ -315,7 +318,7 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
 
         #fill histograms 
 
-        for cat in allcats:
+        for cat in allcats.keys():
 
             for process in processObj.cuts.keys():
                 #Cuts
@@ -334,8 +337,8 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
 
                 #combining all the cuts ... what about the new variables??
                 cuts = []
-                for cuttype in cat.cuts.keys():
-                    for cut in cat.cuts[cuttype]:
+                for cuttype in allcats[cat].cuts.keys():
+                    for cut in allcats[cat].cuts[cuttype]:
                         cuts.append(cut)
                 #cuts.append(procut)
                 #print "allcuts   ",cuts
@@ -358,24 +361,24 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                         #weightfinal = 0.025/(1-0.025) # from previous paper const
                         #weightfinal = datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)) #const for now
                         for var in newVarVals.keys():
-                            #print cat.newvariables[var][1]
-                            #print var+":"+cat.name+":"+process
-                            temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+                            #print allcats[cat].newvariables[var][1]
+                            #print var+":"+allcats[cat].name+":"+process
+                            temp = functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2])
 
-                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==float:
-                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==list:
                                 print "for tlorentz objects"
                                 for var,ivar in enumerate(temp):
-                                    newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                    newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
 
-                        for variableHandle in cat.vars.keys():
-                            val = returnValue(evt,cat.vars[variableHandle][0])
+                        for variableHandle in allcats[cat].vars.keys():
+                            val = returnValue(evt,allcats[cat].vars[variableHandle][0])
                             filedict[variableHandle].cd()
-                            filedict[variableHandle].cd(cat.name)
+                            filedict[variableHandle].cd(allcats[cat].name)
                             if not val==None:
-                                histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process].Fill(float(val),float(weightfinal))
                     continue  # for FF we don't want to compare to regular cuts
 
                 if(process=="FF_2" and datadrivenPackage["bool"]):
@@ -390,24 +393,24 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                         #weightfinal = .17/(1-0.17) # from previous paper const
                         #weightfinal = datadrivenPackage["pseudofit2"].Eval(evt.pt_4)/(1.0000001-datadrivenPackage["pseudofit2"].Eval(evt.pt_4)) #const for now
                         for var in newVarVals.keys():
-                            #print cat.newvariables[var][1]
-                            #print var+":"+cat.name+":"+process
-                            temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+                            #print allcats[cat].newvariables[var][1]
+                            #print var+":"+allcats[cat].name+":"+process
+                            temp = functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2])
 
-                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==float:
-                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==list:
                                 print "for tlorentz objects"
                                 for var,ivar in enumerate(temp):
-                                    newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                    newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
 
-                        for variableHandle in cat.vars.keys():
-                            val = returnValue(evt,cat.vars[variableHandle][0])
+                        for variableHandle in allcats[cat].vars.keys():
+                            val = returnValue(evt,allcats[cat].vars[variableHandle][0])
                             filedict[variableHandle].cd()
-                            filedict[variableHandle].cd(cat.name)
+                            filedict[variableHandle].cd(allcats[cat].name)
                             if not val==None:
-                                histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process].Fill(float(val),float(weightfinal))
                     continue  # for FF we don't want to compare to regular cuts
 
                 if(process=="FF_12" and datadrivenPackage["bool"]):
@@ -424,24 +427,24 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
                         #weightfinal = (datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)))*(datadrivenPackage["pseudofit2"].Eval(evt.pt_4)/(1.0000001-datadrivenPackage["pseudofit2"].Eval(evt.pt_4))) #const for now
 
                         for var in newVarVals.keys():
-                            #print cat.newvariables[var][1]
-                            #print var+":"+cat.name+":"+process
-                            temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+                            #print allcats[cat].newvariables[var][1]
+                            #print var+":"+allcats[cat].name+":"+process
+                            temp = functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2])
 
-                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==float:
-                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                             if type(temp)==list:
                                 print "for tlorentz objects"
                                 for var,ivar in enumerate(temp):
-                                    newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                    newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
 
-                        for variableHandle in cat.vars.keys():
-                            val = returnValue(evt,cat.vars[variableHandle][0])
+                        for variableHandle in allcats[cat].vars.keys():
+                            val = returnValue(evt,allcats[cat].vars[variableHandle][0])
                             filedict[variableHandle].cd()
-                            filedict[variableHandle].cd(cat.name)
+                            filedict[variableHandle].cd(allcats[cat].name)
                             if not val==None:
-                                histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process].Fill(float(val),float(weightfinal))
 
                     continue  # for FF we don't want to compare to regular cuts
 
@@ -468,34 +471,34 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodi
 
                     #fill the new variables 
                     for var in newVarVals.keys():
-                        #print cat.newvariables[var][1]
-                        #print var+":"+cat.name+":"+process
-                        temp = functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2])
+                        #print allcats[cat].newvariables[var][1]
+                        #print var+":"+allcats[cat].name+":"+process
+                        temp = functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2])
 
-                        newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                        newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                         if type(temp)==float:
-                            newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                            newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                         if type(temp)==list:
                             print "for tlorentz objects"
                             for var,ivar in enumerate(temp):
-                                newhistodict[var+":"+cat.name+":"+process].Fill(functs[cat.newvariables[var][0]](evt,cat.newvariables[var][2]),float(weightfinal))
+                                newhistodict[var+":"+allcats[cat].name+":"+process].Fill(functs[allcats[cat].newvariables[var][0]](evt,allcats[cat].newvariables[var][2]),float(weightfinal))
                     #fill the current variables
-                    #for variable in cat.variables
-                    for variableHandle in cat.vars.keys():
+                    #for variable in allcats[cat].variables
+                    for variableHandle in allcats[cat].vars.keys():
                         #move this outside variables
       
                         #obtaining the right variable... WHAT about changed variables in the event!!?
-                        val = returnValue(evt,cat.vars[variableHandle][0])
+                        val = returnValue(evt,allcats[cat].vars[variableHandle][0])
                         filedict[variableHandle].cd()
-                        filedict[variableHandle].cd(cat.name)
+                        filedict[variableHandle].cd(allcats[cat].name)
                         #Fix the weight problem!!!
                         if not val==None:
-                            histodict[variableHandle+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
+                            histodict[variableHandle+":"+allcats[cat].name+":"+process].Fill(float(val),float(weightfinal))
                         #if process=="data_obs":
-                        #    histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
+                        #    histodict[variable[0]+":"+allcats[cat].name+":"+process].Fill(float(val))
                         #else:
-                        #    histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val),float(weightfinal))
-                        #histodict[variable[0]+":"+cat.name+":"+process].Fill(float(val))
+                        #    histodict[variable[0]+":"+allcats[cat].name+":"+process].Fill(float(val),float(weightfinal))
+                        #histodict[variable[0]+":"+allcats[cat].name+":"+process].Fill(float(val))
                 
 
 
@@ -506,33 +509,32 @@ if __name__ == "__main__":
     begin_time = datetime.datetime.now()
 
 
-    #Structure for plotting variables 
-    from utils.Parametrization import Category
-    from utils.Parametrization import Process
 
 
     #Structure for mapping between root files and processes  
-    from utils.Processes import HAA_processes
-    #from utils.Processes import HAA_signals
-    #for testing only... one cat a15
-    #from utils.Processes import HAA_processes_test
     from utils.ProcessCuts import HAA_ProCuts
 
     #Structure for mapping between processes and weights
     from utils.Weights import CommonWeights
     from utils.Weights import HAAWeights
 
-    #Structure for mapping processes and extra distributions 
-    #from utils.Systematics import systematics
+    from TauPOG.TauIDSFs.TauIDSFTool import TauIDSFTool
+    from TauPOG.TauIDSFs.TauIDSFTool import TauESTool
+    from TauPOG.TauIDSFs.TauIDSFTool import TauFESTool
+    #sys.path.append('../SFs/')
+    import utils.SFs.ScaleFactor as SF
 
-    #parser = argsparse.ArgumentParser(description="make datacards")
-    #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
-    #args = parser.parse_args()
+    import io
+    import os
+
     import argparse
 
     parser = argparse.ArgumentParser(description="This file generates root files containing Histograms ... files in utils contain selections and settings")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
     parser.add_argument("-o",  "--outname", default="",  help="postfix string")
+    parser.add_argument("-c",  "--categories", default="categories.yaml",  help="categories yaml file")
+    parser.add_argument("-csv",  "--csvfile", default="MCsamples_2016_v6_yaml.csv",  help="categories yaml file")
+    parser.add_argument("-p",  "--processes", default="processes_special.yaml",  help="processes yaml file")
     parser.add_argument("-dm",  "--datameasure", default=False,action='store_true',  help="Use DataDriven Method measure part")
     parser.add_argument("-dd",  "--datadriven", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-dmZH",  "--datameasureZH", default=False,action='store_true',  help="Use DataDriven Method measure part")
@@ -541,17 +543,105 @@ if __name__ == "__main__":
     parser.add_argument("-v",  "--verbose", default=False,action='store_true',  help="print per event")
     parser.add_argument("-t",  "--test", default=False,action='store_true',  help="only do 1 event to test code")
     parser.add_argument("-mt",  "--mt", default=False,action='store_true',  help="Use Multithreading")
+    parser.add_argument("-pt",  "--maxprint", default=False,action='store_true',  help="Print Info on cats and processes")
     args = parser.parse_args()
 
 
-    #gather all the analysis categories
-    from utils.Categories import allcats
-    from utils.Categories import HAA_Inc_mmmt
-    
     #gather functions for computing variables in the event loop
     from utils.functions import functs
 
+    #Structure for plotting variables 
+    from utils.Parametrization import Category
+    from utils.Parametrization import Process
 
+    #Gather the analysis datasets and info 
+    sampleDict = {}
+ 
+    #with open("MCsamples_2016_v6_yaml.csv")  as csvfile:
+    #    reader = csv.reader(csvfile, delimiter=',')
+    #    for row in reader:
+    #        sampleDict[row[0]] = [row[1],row[2],row[3],row[4],row[5],row[6]]
+
+    for line in open(args.csvfile,'r').readlines() :
+            #[nickname]        = [category,xsec,numberOfEvents,finishedEvents,idk?,DASDataset]
+            if len(line.split(',')[2].split("*"))>1:
+                tempval=1.0
+                for val in line.split(',')[2].split("*"):
+                    tempval = tempval * float(val)
+                row = line.split(',')
+                sampleDict[row[0]] = [row[1],tempval,row[3],row[4],row[5],row[6]]
+            else:
+                row = line.split(',')
+                sampleDict[row[0]] = [row[1],float(row[2]),row[3],row[4],row[5],row[6]]
+
+    #importing analysis categories and conventions
+    with io.open(args.categories,'r') as catsyam:
+        categories = yaml.load(catsyam)
+
+    #loading fake factor and data driven methods
+    with io.open(args.processes,'r') as prosyam:
+        processes_special = yaml.load(prosyam)
+
+    allcats={}
+
+    for category in categories:
+        #print category
+        #print categories[category]['name']
+        tempcat = Category() 
+        tempcat.name=categories[category]['name']
+        tempcat.cuts=categories[category]['cuts']
+        tempcat.newvariables=categories[category]['newvariables']
+        tempcat.vars=categories[category]['vars']
+        allcats[tempcat.name]=tempcat
+
+    
+    #loading standard processes
+    HAA_processes={}
+    for sample in sampleDict.keys():
+        #print processes[process]
+        temppro = Process() 
+        temppro.nickname=sample
+        temppro.file=sample+"_2016.root"
+        temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+        temppro.cuts={sampleDict[sample][0]:""}
+        if "ggTo2mu2tau" in sample:
+            temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
+        if "W" in sample and "Jets" in sample: 
+            temppro.file=sample+"_2016.root"
+            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+            temppro.cuts={"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]}
+        if "TT" in sample and not "TTTT" in sample and not "TTHH" in sample: 
+            temppro.file=sample+"_2016.root"
+            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+            temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]]}
+        HAA_processes[temppro.nickname]=temppro
+
+    #loading special processes ... fake factor and data
+    for process in processes_special:
+        temppro = Process() 
+        temppro.nickname=processes_special[process]['nickname']
+        temppro.cuts=processes_special[process]['cuts']
+        temppro.weights=processes_special[process]['weights']
+        temppro.file=processes_special[process]['file']
+        HAA_processes[temppro.nickname]=temppro
+        
+    if args.maxprint:
+        print "categories "
+        for cat in allcats:
+            print cat.name
+            print cat.cuts
+        
+
+        print "processes "
+        for pro in HAA_processes.keys():
+            print HAA_processes[pro].nickname
+            print HAA_processes[pro].cuts
+            print HAA_processes[pro].weights
+            print HAA_processes[pro].file
+    
+             
+    
+        
     #This is where the plotting takes place!
     #categories.append(HAA_Inc_mmmt) 
     #categories = allcats
@@ -563,6 +653,52 @@ if __name__ == "__main__":
     dir = "/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/"
     #filelist = HAA
     filelist = {}
+
+    #Complex set of event weights
+    # tau id scale factor from object
+    tauIDSF = TauIDSFTool('2016Legacy','DeepTau2017v2p1VSjet','Medium').getSFvsPT
+    # muon scale factor as function of pt
+    sf_MuonId = SF.SFs()
+    sf_MuonId.ScaleFactor("/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/AnalysisVisualization/ScaleFactors/LeptonEffs/Muon/Muon_Run2016_IdIso_0p2.root")
+    EventWeights={
+        #"name":[[if statements],[weight to apply]]
+        "3_mt_lt0p4":[[["decayMode_3","==",0],["eta_3","<",0.4]],[0.80]],
+        "3_mj_lt0p4":[[["decayMode_3","==",0],["eta_3","<",0.4]],[1.21]],
+        "3_mt_0p4to0p8":[[["decayMode_3","==",0],["eta_3",">",0.4],["eta_3","<",0.8]],[0.81]],
+        "3_mj_0p4to0p8":[[["decayMode_3","==",0],["eta_3",">",0.4],["eta_3","<",0.8]],[1.11]],
+        "3_mt_0p8to1p2":[[["decayMode_3","==",0],["eta_3",">",0.8],["eta_3","<",1.2]],[0.79]],
+        "3_mj_0p8to1p2":[[["decayMode_3","==",0],["eta_3",">",0.8],["eta_3","<",1.2]],[1.2]],
+        "3_mt_1p2to1p7":[[["decayMode_3","==",0],["eta_3",">",1.2],["eta_3","<",1.7]],[0.68]],
+        "3_mj_1p2to1p7":[[["decayMode_3","==",0],["eta_3",">",1.2],["eta_3","<",1.7]],[1.16]],
+        "3_mt_1p7to2p3":[[["decayMode_3","==",0],["eta_3",">",1.7],["eta_3","<",2.3]],[0.68]],
+        "3_mj_1p7to2p3":[[["decayMode_3","==",0],["eta_3",">",1.7],["eta_3","<",2.3]],[2.25]],
+
+        "4_mt_lt0p4":[[["decayMode_4","==",0],["eta_4","<",0.4]],[0.80]],
+        "4_mj_lt0p4":[[["decayMode_4","==",0],["eta_4","<",0.4]],[1.21]],
+        "4_mt_0p4to0p8":[[["decayMode_4","==",0],["eta_4",">",0.4],["eta_4","<",0.8]],[0.81]],
+        "4_mj_0p4to0p8":[[["decayMode_4","==",0],["eta_4",">",0.4],["eta_4","<",0.8]],[1.11]],
+        "4_mt_0p8to1p2":[[["decayMode_4","==",0],["eta_4",">",0.8],["eta_4","<",1.2]],[0.79]],
+        "4_mj_0p8to1p2":[[["decayMode_4","==",0],["eta_4",">",0.8],["eta_4","<",1.2]],[1.2]],
+        "4_mt_1p2to1p7":[[["decayMode_4","==",0],["eta_4",">",1.2],["eta_4","<",1.7]],[0.68]],
+        "4_mj_1p2to1p7":[[["decayMode_4","==",0],["eta_4",">",1.2],["eta_4","<",1.7]],[1.16]],
+        "4_mt_1p7to2.3":[[["decayMode_4","==",0],["eta_4",">",1.7],["eta_4","<",2.3]],[0.68]],
+        "4_mj_1p7to2.3":[[["decayMode_4","==",0],["eta_4",">",1.7],["eta_4","<",2.3]],[2.25]],
+
+        #bound method ... last input list is func parameters
+        "3_tauSF":[[["cat","==",7],["gen_match_3","==",5]],[tauIDSF,["pt_3","gen_match_3"]]],
+        "4_tauSF":[[["cat","==",7],["gen_match_4","==",5]],[tauIDSF,["pt_4","gen_match_4"]]],
+
+        "3_tauSF":[[["cat","==",6],["gen_match_3","==",5]],[tauIDSF,["pt_3","gen_match_3"]]],
+        "4_tauSF":[[["cat","==",6],["gen_match_4","==",5]],[tauIDSF,["pt_4","gen_match_4"]]]
+
+    }
+    for objkey in HAA_processes.keys():
+        if not objkey=="data":
+            HAA_processes[objkey].eventWeights = EventWeights
+            #HAA_processes[objkey].cuts = {sampleDict[HAA_processes[objkey].nickname][0]:""}
+            #HAA_processes[objkey].cuts["prompt"] = [["gen_match_3","!=",0],["gen_match_4","!=",0]] # doing this in other script 
+            print HAA_processes[objkey].nickname+"_2016"
+    print "added SF weights"
 
     #for testing only... one cat a15
     #HAA_processes=HAA_processes_test
@@ -580,32 +716,21 @@ if __name__ == "__main__":
             if proObj=="data":
                 HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
                 HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
-        for category in allcats:
-            if category.name=="mmmt_inclusive":
-                allcats.remove(category)
+        #for category in allcats.keys():
+        #    if allcats[category].name=="mmmt_inclusive":
+        #        del allcats[category]
     if (args.datadrivenZH):
         for proObj in HAA_processes.keys():
             if proObj=="data":
                 HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
                 HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
-        for category in allcats[:]:
-            if category.name!="mmmt_inclusive":
-                allcats.remove(category)
-                print "removing category ",category.name
-    print "The categories "
-    for category in allcats:
-        print category.name
+        for category in allcats.keys():
+            if allcats[category].name!="mmmt_inclusive":
+                print "removing category ",allcats[category].name
+                del allcats[category]
 
     print "The files ",filelist
     treename = "Events"
-
-    #Gather the analysis datasets and info 
-    sampleDict = {}
- 
-    with open("MCsamples_2016_v6_sam.csv")  as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        for row in reader:
-            sampleDict[row[0]] = [row[1],row[2],row[3],row[4],row[5],row[6]]
 
     print "initializing histograms"
     
@@ -619,7 +744,7 @@ if __name__ == "__main__":
     #cat=HAA_Inc_mmmt
 
     numvar=0
-    for variableHandle in HAA_Inc_mmmt.vars.keys():
+    for variableHandle in allcats["mmmt_inclusive"].vars.keys():
     
         #variable=fullvariable.split(":") # for the unrolled cases
 
@@ -627,11 +752,11 @@ if __name__ == "__main__":
         filedict[variableHandle]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variableHandle)+".root","RECREATE")
         #print "on variableHandle ",variableHandle
         filedict[variableHandle].cd()
-        for cat in allcats:
-            print "Working on cat ",cat.name
-            print "With category cuts ",cat.cuts
-            filedict[variableHandle].mkdir(cat.name)
-            filedict[variableHandle].cd(cat.name)
+        for cat in allcats.keys():
+            #print "Working on category.",allcats[cat].name
+            #print "With cuts ",allcats[cat].cuts
+            filedict[variableHandle].mkdir(allcats[cat].name)
+            filedict[variableHandle].cd(allcats[cat].name)
 
             for nickname in filelist.keys():
 
@@ -640,55 +765,56 @@ if __name__ == "__main__":
                 for process in processObj.cuts.keys():
 
 
-                    if filedict[variableHandle].Get(cat.name).GetListOfKeys().Contains(str(process)):
+                    if filedict[variableHandle].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
                         continue
                     else:
-                        #bins = cat.binning[numvar]
-                        bins = cat.vars[variableHandle][1]
+                        #bins = allcats[cat].binning[numvar]
+                        bins = allcats[cat].vars[variableHandle][1]
                         if type(bins[0])==list:
-                            histodict[variableHandle+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
-                            histodict[variableHandle+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
+                            histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
                         else:
                             tmpbin = np.asarray(bins)
-                            histodict[variableHandle+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                            histodict[variableHandle+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                            histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
         numvar=numvar+1
 
     #gathering new varibles
     numvar=0
-    for variable in HAA_Inc_mmmt.newvariables.keys():
+    for variable in allcats["mmmt_inclusive"].newvariables.keys():
 
         #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
         filedict[variable]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variable)+".root","RECREATE")
         #print "on variable ",variable
         filedict[variable].cd()
-        for cat in allcats:
-            filedict[variable].mkdir(cat.name)
-            filedict[variable].cd(cat.name)
+        #for cat in allcats:
+        for cat in allcats.keys():
+            filedict[variable].mkdir(allcats[cat].name)
+            filedict[variable].cd(allcats[cat].name)
 
             for nickname in filelist.keys():
 
                 processObj = HAA_processes[nickname]
 
                 for process in processObj.cuts.keys():
-                    print "process ",process,"  cuts  ",processObj.cuts[process]
+                    #print "process ",process,"  cuts  ",processObj.cuts[process]
 
-                    if filedict[variable].Get(cat.name).GetListOfKeys().Contains(str(process)):
+                    if filedict[variable].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
                         continue
                     else:
-                        #tmpbin = np.asarray(cat.newvariablesbins[numvar])
-                        bins = HAA_Inc_mmmt.newvariables[variable][1]
+                        #tmpbin = np.asarray(allcats[cat].newvariablesbins[numvar])
+                        bins = allcats["mmmt_inclusive"].newvariables[variable][1]
                         tmpbin = np.asarray(bins)
-                        #print variable+":"+cat.name+":"+process
-                        if  HAA_Inc_mmmt.newvariables[variable][-1]=="multiob":
+                        #print variable+":"+allcats[cat].name+":"+process
+                        if  allcats["mmmt_inclusive"].newvariables[variable][-1]=="multiob":
                             for var,ivar in enumerate(temp):
-                                newhistodict[variable+"_"+str(ivar)+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin[ivar])-1,tmpbin[ivar])
-                                newhistodict[variable+"_"+str(ivar)+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                                newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin[ivar])-1,tmpbin[ivar])
+                                newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
                         else:
-                            newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                            newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-                        #newhistodict[variable+":"+cat.name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                        #newhistodict[variable+":"+cat.name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                            newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        #newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                        #newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
         numvar=numvar+1
 
     #gather extra global variables or weights
@@ -797,13 +923,9 @@ if __name__ == "__main__":
             f_1.SetName("FakeRateMuLeg")
             f_1.GetXaxis().SetTitle("p_T #mu")
             f_1.GetYaxis().SetTitle("Fake Rate for #mu")
-            f_1.GetYaxis().SetTitleOffset(1.25)
-            f_1.GetYaxis().SetLabelSize(0.03)
             f_2.SetName("FakeRateTauLeg")
             f_2.GetXaxis().SetTitle("p_T #tau")
             f_2.GetYaxis().SetTitle("Fake Rate for #tau")
-            f_2.GetYaxis().SetTitleOffset(1.25)
-            f_2.GetYaxis().SetLabelSize(0.03)
 
             #tf_1 = ROOT.TF1("tf_1","[0]*expo[1]",f_1.GetXaxis().GetXmin(),f_1.GetXaxis().GetXmax()) 
             #tf_2 = ROOT.TF1("tf_2","[0]*expo[1]",f_2.GetXaxis().GetXmin(),f_2.GetXaxis().GetXmax()) 
@@ -853,7 +975,7 @@ if __name__ == "__main__":
         #processes = HAA_processes[nickname].cuts
         processObj = HAA_processes[nickname]
 
-        calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,processObj,nickname,histodict,weightstring,weight,datadrivenPackage,args.verbose,args.test)
+        calculateHistos(functs,tree,allcats["mmmt_inclusive"],allcats,processObj,nickname,histodict,weightstring,weight,datadrivenPackage,args.verbose,args.test)
 
     print "writing the histograms to the file"
     for varcatPro in histodict.keys():
@@ -862,13 +984,15 @@ if __name__ == "__main__":
         filedict[varcatPro.split(":")[0]].cd()
         filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
         histodict[varcatPro].Write(histodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
-    print "writing the histograms to the file"
+    print "writing the new variable histograms to the file"
     for varcatPro in newhistodict.keys():
         #print "file ",filedict[varcatPro.split(":")[0]].GetName()," contents ",filedict[varcatPro.split(":")[0]].ls()
         #print "file ",varcatPro.split(":")[0]," writing ",varcatPro,"  final entries ",newhistodict[varcatPro].GetEntries()
         filedict[varcatPro.split(":")[0]].cd()
         filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
         newhistodict[varcatPro].Write(newhistodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
+
+    del sf_MuonId
     print "computation time"        
     print(datetime.datetime.now() - begin_time)
 

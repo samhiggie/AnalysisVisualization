@@ -33,6 +33,8 @@ class Process():
         #what are some important weights or scale factors NOT COMMON to all processes????
         #xsec, nevents, 
         self.weights = {}
+        #eventscale weights... a selection string and what weight to apply
+        self.eventWeights = {}
         #cuts per process... overrides the plot name ... and we loop over collection of these in main 
         self.cuts = {}
         self.file = ""

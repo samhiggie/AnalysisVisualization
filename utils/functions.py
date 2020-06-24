@@ -13,6 +13,9 @@
 '''
 #########################
 import ROOT
+from TauPOG.TauIDSFs.TauIDSFTool import TauIDSFTool
+from TauPOG.TauIDSFs.TauIDSFTool import TauESTool
+from TauPOG.TauIDSFs.TauIDSFTool import TauFESTool
 #load these functions into a dictionary so we can call on them in the event loop
 
 functs={}

@@ -7,6 +7,8 @@ from array import array
 #import varCfgPlotter
 import argparse
 import os
+import io
+import yaml
 #from HttStyles import GetStyleHtt
 #from HttStyles import MakeCanvas
 
@@ -141,15 +143,20 @@ def makeHisto(h,hS,hB,hD):
 if __name__ == "__main__":
 
     #Change these to input category files ?? via parser?
-    from utils.Categories import HAA_Inc_mmmt
-    from utils.Processes import HAA_processes
+    #from utils.Categories import HAA_Inc_mmmt
+    #from utils.Processes import HAA_processes
     from utils.Categories import allcats
+    from utils.Parametrization import Category
+    from utils.Parametrization import Process
     import argparse
 
     parser = argparse.ArgumentParser(description="make full plots from root files containing histograms")
     #parser.add_arguement('--CategoryFiles',nargs="+",help="Select the files containing the categories for the datacards")
     parser.add_argument("-i",  "--input", default="",  help="postfix string from previous MakeDataCard step")
     parser.add_argument("-o",  "--output", default="",  help="postfix string")
+    parser.add_argument("-c",  "--categories", default="categories.yaml",  help="categories yaml file")
+    parser.add_argument("-csv",  "--csvfile", default="MCsamples_2016_v6_yaml.csv",  help="categories yaml file")
+    parser.add_argument("-p",  "--processes", default="processes_special.yaml",  help="processes yaml file")
     parser.add_argument("-dd",  "--datadriven", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-ddZH",  "--datadrivenZH", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-mc",  "--mc", default=False,action='store_true',  help="Use only mc skip data")
@@ -161,16 +168,58 @@ if __name__ == "__main__":
     ROOT.gROOT.SetBatch(True)
 
 
-    catnames = HAA_Inc_mmmt.name
+
+    #Gather the analysis datasets and info 
+    sampleDict = {}
+ 
+    #with open("MCsamples_2016_v6_yaml.csv")  as csvfile:
+    #    reader = csv.reader(csvfile, delimiter=',')
+    #    for row in reader:
+    #        sampleDict[row[0]] = [row[1],row[2],row[3],row[4],row[5],row[6]]
+
+    for line in open(args.csvfile,'r').readlines() :
+            #[nickname]        = [category,xsec,numberOfEvents,finishedEvents,idk?,DASDataset]
+            if len(line.split(',')[2].split("*"))>1:
+                tempval=1.0
+                for val in line.split(',')[2].split("*"):
+                    tempval = tempval * float(val)
+                row = line.split(',')
+                sampleDict[row[0]] = [row[1],tempval,row[3],row[4],row[5],row[6]]
+            else:
+                row = line.split(',')
+                sampleDict[row[0]] = [row[1],float(row[2]),row[3],row[4],row[5],row[6]]
+
+    #importing analysis categories and conventions
+    with io.open(args.categories,'r') as catsyam:
+        categories = yaml.load(catsyam)
+
+    #loading fake factor and data driven methods
+    with io.open(args.processes,'r') as prosyam:
+        processes_special = yaml.load(prosyam)
+
+    allcats={}
+
+    for category in categories:
+        #print category
+        #print categories[category]['name']
+        tempcat = Category() 
+        tempcat.name=categories[category]['name']
+        tempcat.cuts=categories[category]['cuts']
+        tempcat.newvariables=categories[category]['newvariables']
+        tempcat.vars=categories[category]['vars']
+        allcats[tempcat.name]=tempcat
+
     newvars=[]
     variabledic={}
-    for newvar in  HAA_Inc_mmmt.newvariables.keys():
+
+    #for newvar in  HAA_Inc_mmmt.newvariables.keys():
+    for newvar in  allcats[allcats.keys()[0]].newvariables:
         newvars.append([newvar])
-        variabledic[newvar]=[newvar,HAA_Inc_mmmt.newvariables[newvar][1],HAA_Inc_mmmt.newvariables[newvar][3],HAA_Inc_mmmt.newvariables[newvar][4]]
+        variabledic[newvar]=[newvar,allcats[allcats.keys()[0]].newvariables[newvar][1],allcats[allcats.keys()[0]].newvariables[newvar][3],allcats[allcats.keys()[0]].newvariables[newvar][4]]
     variables = [] 
-    for varHandle in HAA_Inc_mmmt.vars.keys():
+    for varHandle in allcats[allcats.keys()[0]].vars.keys():
         variables.append([varHandle])
-        variabledic[varHandle]=HAA_Inc_mmmt.vars[varHandle]
+        variabledic[varHandle]=allcats[allcats.keys()[0]].vars[varHandle]
     variables = variables + newvars
     #print variables
     filelist = {}
@@ -178,6 +227,38 @@ if __name__ == "__main__":
     
     for var in variables:
         filelist[var[0]] = var[0]+".root"
+
+
+
+    #loading standard processes
+    HAA_processes={}
+    for sample in sampleDict.keys():
+        #print processes[process]
+        temppro = Process() 
+        temppro.nickname=sample
+        temppro.file=sample+"_2016.root"
+        temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+        temppro.cuts={sampleDict[sample][0]:""}
+        if "ggTo2mu2tau" in sample:
+            temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
+        if "W" in sample and "Jets" in sample: 
+            temppro.file=sample+"_2016.root"
+            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+            temppro.cuts={"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]]}
+        if "TT" in sample and not "TTTT" in sample and not "TTHH" in sample: 
+            temppro.file=sample+"_2016.root"
+            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
+            temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]]}
+        HAA_processes[temppro.nickname]=temppro
+
+    #loading special processes ... fake factor and data
+    for process in processes_special:
+        temppro = Process() 
+        temppro.nickname=processes_special[process]['nickname']
+        temppro.cuts=processes_special[process]['cuts']
+        temppro.weights=processes_special[process]['weights']
+        temppro.file=processes_special[process]['file']
+        HAA_processes[temppro.nickname]=temppro
 
     for pro in HAA_processes.values():
         for subpro in pro.cuts.keys():
@@ -218,17 +299,19 @@ if __name__ == "__main__":
             
             #reducible
             #hBackground = ROOT.THStack("reducible background","")
-            hBackground = category.Get("Z")
+            hBackground = category.Get("DY")
             hBackground.Add(category.Get("W"))
             hBackground.Add(category.Get("TT"))
             hBackground.Add(category.Get("ST"))
-            hBackground.Add(category.Get("EWK"))
+            #hBackground.Add(category.Get("EWK"))
             
             #irreducible
             #hirBackground = ROOT.THStack("irreducible background","")
             #hirBackground = ROOT.TH1D()
             hirBackground = category.Get("ZZ")
             hirBackground.Add(category.Get("ZHToTauTau"))
+            hirBackground.Add(category.Get("vbf"))
+            hirBackground.Add(category.Get("WHTT"))
 
             #triple coupling 
             h3alphBackground = category.Get("ttZ")
@@ -241,9 +324,10 @@ if __name__ == "__main__":
 
             #rare 
             hrareBackground = category.Get("rare")
-            hrareBackground.Add(category.Get("GluGluTo2mu2tau"))
-            hrareBackground.Add(category.Get("GluGluTo2mu2nu"))
-            hrareBackground.Add(category.Get("GluGluTo4mu"))
+            hrareBackground.Add(category.Get("WZ"))
+            hrareBackground.Add(category.Get("Other"))
+            #hrareBackground.Add(category.Get("GluGluTo2mu2nu"))
+            #hrareBackground.Add(category.Get("GluGluTo4mu"))
 
             #data
             if not args.mc:
@@ -261,6 +345,7 @@ if __name__ == "__main__":
                     hData.SetBinContent(4,-999)
                     hData.SetBinContent(5,-999)
                     hData.SetBinContent(6,-999)
+
             if args.datadriven:
                 hFF1 = category.Get("FF_1")
                 hFF2 = category.Get("FF_2")
