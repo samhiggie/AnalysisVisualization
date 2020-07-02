@@ -295,35 +295,67 @@ if __name__ == "__main__":
             #signal 
             hSignal = category.Get("a40")
             
-            #reducible
-            #hBackground = ROOT.THStack("reducible background","")
-            hBackground = category.Get("DY")
-            hBackground.Add(category.Get("W"))
-            hBackground.Add(category.Get("TT"))
-            hBackground.Add(category.Get("ST"))
-            #hBackground.Add(category.Get("EWK"))
-            
-            #irreducible
-            #hirBackground = ROOT.THStack("irreducible background","")
-            #hirBackground = ROOT.TH1D()
-            hirBackground = category.Get("ZZ")
-            hirBackground.Add(category.Get("ZHToTauTau"))
-            hirBackground.Add(category.Get("vbf"))
-            hirBackground.Add(category.Get("WHTT"))
+            hDataDict={}
+            hMCDict={}
+            hMCFake1Dict={}
+            hMCFake2Dict={}
 
-            #triple coupling 
-            h3alphBackground = category.Get("ttZ")
-            h3alphBackground.Add(category.Get("ttW"))
-            h3alphBackground.Add(category.Get("WWZ"))
-            h3alphBackground.Add(category.Get("WZZ"))
-            h3alphBackground.Add(category.Get("ZZZ"))
-            h3alphBackground.Add(category.Get("WWW_4F"))
-            h3alphBackground.Add(category.Get("HZJ"))
+            #obtaining the histograms
+            for histokey in category.GetListOfKeys():
+                histo = histokey.ReadObj()
+                histoname = histo.GetName()
+                print histoname.split("fake1_")[0]
+                if histoname not in ["data_obs","FF_1","FF_2","FF_12"] and histoname.split("fake1_")[0]=="":
+                    hMCFake1Dict[histoname]=histo
+                if histoname not in ["data_obs","FF_1","FF_2","FF_12"] and histoname.split("fake2_")[0]=="":
+                    hMCFake2Dict[histoname]=histo
+                #if histoname not in ["data_obs","FF_1","FF_2","FF_12","TTL","WL","ZL","WJ","TTJ","TTT","FF","prompt1","prompt2"] and histoname.split("fake1_")[0]!="" and histoname.split("fake2_")[0]!="":
+                if histoname in ["DY","W","TT","ST","EWK","ZZ","ZHToTauTau","vbf","WHTT","ttZ","ttW","WWZ","WZZ","ZZZ","WWW_4F","HZJ","Other","rare","WZ"] and histoname.split("fake1_")[0]!="" and histoname.split("fake2_")[0]!="":
+                    hMCDict[histoname]=histo
+                elif histoname in ["data_obs","FF_1","FF_2","FF_12"]:
+                    hDataDict[histoname]=histo
+            print hMCDict
+            #print hMCFake1Dict
 
-            #rare 
-            hrareBackground = category.Get("rare")
-            hrareBackground.Add(category.Get("WZ"))
-            hrareBackground.Add(category.Get("Other"))
+            #subtracting the fakes 
+            print "subtracting fakes "
+            for histo in hMCDict.keys():
+                hMCDict[histo].Add(hMCFake1Dict["fake1_"+str(histo)],-1)
+                hMCDict[histo].Add(hMCFake2Dict["fake2_"+str(histo)],-1)
+
+            print "divising MC into categories "
+            hBackground = ROOT.TH1F()
+            hirBackground = ROOT.TH1F()
+            hrareBackground = ROOT.TH1F()
+            h3alphBackground = ROOT.TH1F()
+
+            Bkg = ["DY","W","TT","ST","EWK"]
+            irBkg = ["ZZ","ZHToTauTau","vbf","WHTT"]
+            TrialphaBkg = ["ttZ","ttW","WWZ","WZZ","ZZZ","WWW_4F","HZJ"]
+            rareBkg = ["Other","rare","WZ"]
+
+            for histo in hMCDict.keys():
+                if histo in Bkg:
+                    if hBackground.GetName()=="":
+                        hBackground = hMCDict[histo].Clone()
+                    else:
+                        hBackground.Add(hMCDict[histo])
+                if histo in irBkg:
+                    if hirBackground.GetName()=="":
+                        hirBackground = hMCDict[histo].Clone()
+                    else:
+                        hirBackground.Add(hMCDict[histo])
+                if histo in TrialphaBkg:
+                    if h3alphBackground.GetName()=="":
+                        h3alphBackground = hMCDict[histo].Clone()
+                    else:
+                        h3alphBackground.Add(hMCDict[histo])
+                if histo in rareBkg:
+                    if hrareBackground.GetName()=="":
+                        hrareBackground = hMCDict[histo].Clone()
+                    else:
+                        hrareBackground.Add(hMCDict[histo])
+
             #hrareBackground.Add(category.Get("GluGluTo2mu2nu"))
             #hrareBackground.Add(category.Get("GluGluTo4mu"))
 
@@ -391,10 +423,10 @@ if __name__ == "__main__":
             if args.datadrivenZH:
                 hData = category.Get("data_obs")
                 hPrompt = category.Get("prompt")
-                hFake1 = category.Get("fake1")
-                hFake2 = category.Get("fake2")
-                hirBackground.Add(hFake1,-1)
-                hirBackground.Add(hFake2,-1)
+                #hFake1 = category.Get("fake1")
+                #hFake2 = category.Get("fake2")
+                #hirBackground.Add(hFake1,-1)
+                #hirBackground.Add(hFake2,-1)
                 hFF1 = category.Get("FF_1")
                 hFF2 = category.Get("FF_2")
                 hFF12 = category.Get("FF_12")
@@ -410,7 +442,6 @@ if __name__ == "__main__":
                 hFF.SetFillStyle(1001)
                 hFF.SetFillColor(ROOT.TColor.GetColor("#CF8AC8"))
 
-
             
 
             if not (args.datadriven or args.datadrivenZH):
@@ -419,7 +450,6 @@ if __name__ == "__main__":
             else:
                 hbkg = hFF.Clone()
                 hBkgTot.Add(hFF)
-            #hBkgTot = h3alphBackground.Clone()
 
             
             hbkg.Add(hirBackground)
@@ -452,10 +482,10 @@ if __name__ == "__main__":
             doRatio=True
 
             if not doRatio:
-                c.SetLeftMargin     (L/W)
-                c.SetRightMargin    (R/W)
-                c.SetTopMargin      (T/H)
-                c.SetBottomMargin   (B/H)
+                c.SetLeftMargin(L/W)
+                c.SetRightMargin(R/W)
+                c.SetTopMargin(T/H)
+                c.SetBottomMargin(B/H)
             c.cd()
 
             pad1 = ROOT.TPad("pad1","pad1",0.0016,0.291,1.0,1.0)
@@ -463,7 +493,6 @@ if __name__ == "__main__":
             pad2 = ROOT.TPad("pad2","The lower pad",0,0,1.0,0.29)
 
             if(doRatio):
-
                 pad1.SetTicks(0,0)
                 pad1.SetLeftMargin(L/W)
                 pad1.SetRightMargin(R/W)
@@ -471,7 +500,6 @@ if __name__ == "__main__":
                 pad1.SetBottomMargin(B_ratio/H) 
                 pad1.SetFillColor(0)
                 pad1.SetBottomMargin(0)
-
 
                 pad2.SetLeftMargin(L/W)
                 pad2.SetRightMargin(R/W)
