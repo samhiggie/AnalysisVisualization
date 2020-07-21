@@ -5,12 +5,14 @@ HAA_Inc_mmmt:
     cuts: 
         preselection: [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],["eta_4","absl",2.3],[["EQT"],["q_1","q_2"],"mult","<",0],["iso_1","<=",0.2],["iso_2","<=",0.2],["nbtag","<",1.0],["cat","==",6]]
         categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_3","<=",0.15],["mediumId_3",">=",1],[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint]]
-        trigger: &trigger [[["OR"],["muonTriggerWord","band",2],["muonTriggerWord","band",4]]] 
+        #trigger: &trigger [[["OR"],["muonTriggerWord","band",2],["muonTriggerWord","band",4]]] 
+        #trigger: &trigger [["muonTriggerWord","band",4]] 
+        trigger: &trigger [[["OR"],["muonTriggerWord","band",4],["muonTriggerWord","band",8],["muonTriggerWord","band",16],["muonTriggerWord","band",32]]] 
     
     newvariables: &newvariables {
-        mll-mtt: ["minus",[-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0,40.0,50.0,60.0],["mll","m_vis"],"[GeV]","mll - m_{vis}"],
-        charge_12: ["multi",[-2.0,-0.75,0.75,2.0],["q_1","q_2"],"","charge_1 #cross charge_2"],
-        charge_34: ["multi",[-2.0,-0.75,0.75,2.0],["q_3","q_4"],"","charge_3 #cross charge_4"]
+        mll-mtt: ["minusArr",[-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0,40.0,50.0,60.0],["mll","m_vis"],"[GeV]","mll - m_{vis}"],
+        charge_12: ["multiArr",[-2.0,-0.75,0.75,2.0],["q_1","q_2"],"","charge_1 #cross charge_2"],
+        charge_34: ["multiArr",[-2.0,-0.75,0.75,2.0],["q_3","q_4"],"","charge_3 #cross charge_4"]
     }
 
     vars: &vars {
@@ -75,24 +77,24 @@ HAA_Inc_mmmt:
         beta_2: ["beta_2",[[60,-3,3]],"","BJet^{2} #eta"],
 
         met: ["met",[[20,0,200]],"[GeV]","#it{p}_{T}^{miss}"],
-        met_phi: ["met_phi",[[60,-3,3]],"","#it{p}_{T}^{miss} #phi"],
-        puppi_phi: ["puppi_phi",[[60,-3,3]],"","PUPPI#it{p}_{T}^{miss} #phi"],
+        #met_phi: ["met_phi",[[60,-3,3]],"","#it{p}_{T}^{miss} #phi"],
+        #puppi_phi: ["puppi_phi",[[60,-3,3]],"","PUPPI#it{p}_{T}^{miss} #phi"],
         puppimet: ["puppimet",[[20,0,200]],"[GeV]","#it{p}_{T}^{miss}"],
         mll_fine: ["mll",[[40,20,100]],"[Gev]","M_{#mu#mu}"],
         m_vis_fine: ["m_vis",[[30,50,200]],"[Gev]","m(#tau#tau)"],
         pt_tt: ["pt_tt",[[40,0,200]],"[GeV]","P_{T}(#tau#tau)"],
         A2_DR: ["H_DR",[[60,0,6]],"","#Delta R(#tau#tau)"],
-        A2_tot: ["H_tot",[[30,0,200]],"[GeV]","m_{T}tot(#tau#tau)"],
+        #A2_tot: ["H_tot",[[30,0,200]],"[GeV]","m_{T}tot(#tau#tau)"],
         A1_Pt: ["Z_Pt",[[60,0,300]],"[Gev]","P_T(l_{1}l_{2})"],
         A1_DR: ["Z_DR",[[60,0,6]],"[Gev]","#Delta R(l_{1}l_{2})"],
-        inTimeMuon_1: ["inTimeMuon_1",[[3,-1.5,1.5]],"","inTimeMuon_1"],
+        #inTimeMuon_1: ["inTimeMuon_1",[[3,-1.5,1.5]],"","inTimeMuon_1"],
         isGlobal_1: ["isGlobal_1",[[3,-1.5,1.5]],"","isGlobal_1"],
         isTracker_1: ["isTracker_1",[[3,-1.5,1.5]],"","isTracker_1"],
         looseId_1: ["looseId_1",[[3,-1.5,1.5]],"","looseId_1"],
         mediumId_1: ["mediumId_1",[[3,-1.5,1.5]],"","mediumId_1"],
         Electron_mvaFall17V2noIso_WP90_1: ["Electron_mvaFall17V2noIso_WP90_1",[[3,-1.5,1.5]],"","Electron_mvaFall17V2noIso_WP90_1"],
         gen_match_1: ["gen_match_1",[[30,-0.5,29.5]],"","gen_match_1"],
-        inTimeMuon_2: ["inTimeMuon_2",[[3,-1.5,1.5]],"","inTimeMuon_2"],
+        #inTimeMuon_2: ["inTimeMuon_2",[[3,-1.5,1.5]],"","inTimeMuon_2"],
         isGlobal_2: ["isGlobal_2",[[3,-1.5,1.5]],"","isGlobal_2"],
         isTracker_2: ["isTracker_2",[[3,-1.5,1.5]],"","isTracker_2"],
         looseId_2: ["looseId_2",[[3,-1.5,1.5]],"","looseId_2"],

@@ -22,7 +22,7 @@ import itertools
 import operator
 import csv
 
-
+#test comment
 #GLOBAL VARIABLES AND FUNCTIONS!
 
 #Function that combines neighboring bins into a list 

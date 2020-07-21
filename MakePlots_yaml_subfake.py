@@ -267,7 +267,11 @@ if __name__ == "__main__":
     for ivar,var in enumerate(filelist.keys()):
     #for ivar,var in enumerate(cat.vars.keys()):
         print "Working on file ",filelist[var],"  for variable   ",var
-        file = ROOT.TFile("out"+str(args.input)+"/"+filelist[var],"read")
+        try:
+            file = ROOT.TFile("out"+str(args.input)+"/"+filelist[var],"read")
+        except:
+            print "no file for ",filelist[var]
+            continue
         #bins=HAA_Inc_mmmt.binning + HAA
          
         #for catname in enumerate():

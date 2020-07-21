@@ -23,6 +23,10 @@ minus = lambda evt,x: getattr(evt,x[0],None) - getattr(evt,x[1],None)
 functs["minus"]=minus 
 plus = lambda evt,x: getattr(evt,x[0],None) + getattr(evt,x[1],None)
 functs["plus"]=plus
+minusArr = lambda x,y: x-y 
+functs["minusArr"]=minusArr 
+plusArr = lambda x,y: x+y 
+functs["plusArr"]=plusArr
 def multi(evt,x): 
     product = 1.0
     for i,j in enumerate(x):
@@ -31,6 +35,10 @@ def multi(evt,x):
     #    print evt.evt,x[0],x[1],"  multi   ",product
     return product 
 functs["multi"] = multi
+
+def multiArr(x,y): 
+    return x*y
+functs["multiArr"] = multiArr
 
 def TLorentz(evt,x):
     vector = ROOT.TLorentzVector()
