@@ -157,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("-dd",  "--datadriven", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-ddZH",  "--datadrivenZH", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-mc",  "--mc", default=False,action='store_true',  help="Use only mc skip data")
+    parser.add_argument("-fh",  "--fh", default=False,action='store_true',  help="Make Finalized histograms")
     args = parser.parse_args()
 
     ROOT.gStyle.SetFrameLineWidth(2)
@@ -220,10 +221,13 @@ if __name__ == "__main__":
     variables = variables + newvars
     #print variables
     filelist = {}
+    finalhists = {}
     processes = []
     
     for var in variables:
         filelist[var[0]] = var[0]+".root"
+        if args.fh:
+            finalhists[var[0]] = var[0]+".root"
 
 
 
