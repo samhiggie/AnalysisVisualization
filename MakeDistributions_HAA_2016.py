@@ -45,7 +45,7 @@ class myThread (threading.Thread):
       self.name = name
       self.counter = counter
    def run(self):
-      print "Starting " + self.name
+      print("Starting " + self.name)
       # Get lock to synchronize threads
       threadLock.acquire()
       print_time(self.name, self.counter, 3)
@@ -55,7 +55,7 @@ class myThread (threading.Thread):
 def print_time(threadName, delay, counter):
    while counter:
       time.sleep(delay)
-      print "%s: %s" % (threadName, time.ctime(time.time()))
+      print("%s: %s" % (threadName, time.ctime(time.time())))
       counter -= 1
 
 def subArrayLogic(evt,array):
@@ -76,7 +76,6 @@ def cutOnArray(masterArray,cuts):
     mask=np.full(len(masterArray["evt"]),True)
 
     for cut in cuts:
-        #print "working on cut ",cut
         #Every USE CASE MUST MULTIPLY BY MASK!
         if type(cut[0][0])==type([0]):
             mask = cutOnArray(masterArray,cut)
@@ -102,9 +101,7 @@ def cutOnArray(masterArray,cuts):
                     tempmask = tempmask - returnArray(masterArray,var)
             #recasting tempmask to boolian/integer array
             tempmask = ops[cut[3]](tempmask,cut[4])
-            #print "EQT tempmask",tempmask
 
-            #print " EQT mask before ",mask
             mask *= tempmask.astype(bool)
             continue
 
@@ -112,14 +109,9 @@ def cutOnArray(masterArray,cuts):
             tempmasks=[]
             tempmask=np.full(len(masterArray["evt"]),False)
             for oe in range(1,len(cut)):
-                #print cut[oe]
                 oneor = ops[cut[oe][1]](returnArray(masterArray,cut[oe][0]),cut[oe][2])
-                #print oneor
                 tempmask = ops["bor"](tempmask,oneor).astype(bool)
-            #print "tempmask ",tempmask
-            #print "mask before ",mask
             mask *= tempmask.astype(bool)
-            #print "mask after or  ",mask
             continue
 
         #default case done? FIX ABS!
@@ -130,19 +122,11 @@ def cutOnArray(masterArray,cuts):
                 tempmask2= ops[">"](returnArray(masterArray,cut[0]),cut[2])
                 tempmask = ops["bor"](tempmask,tempmask2)
             if statement=="absl": # greater than AND less tahn
-                #print cut[0],returnArray(masterArray,cut[0])
                 tempmask = ops[">"](returnArray(masterArray,cut[0]),(-1 * cut[2]))
-                #print "tempmask absl 1",tempmask
                 tempmask *= ops["<"](returnArray(masterArray,cut[0]),cut[2])
-                #print "tempmask absl 2",tempmask
             else:
-                #print statement
-                #print cut[0],returnArray(masterArray,cut[0])
                 tempmask = ops[statement](returnArray(masterArray,cut[0]),cut[2])
-                #print "tempmask ",tempmask
-            #print "mask before ",mask
             mask *= tempmask.astype(bool)
-        #print "cut ",cut,"  mask ",mask
 
     #masterArray["mask"] = mask
 
@@ -180,42 +164,33 @@ def createUnrolledHistogram(cat,numvar,filelist,process,variable,weight,filedict
 
     binlist = returnBinList(secondaryBins)
     combos = returnPerms(binlist)
-    #print "Primary Bins  ",primaryBins
-    #print "Combinations for secondary bins  ",combos
     procut = HAA_ProCuts.get(process)
     histList = []
     urnum = 0
     for bincuts in combos:
         htmp=ROOT.TH1D("htemp"+str(process)+str(urnum),"htemp"+str(process)+str(urnum),len(primaryBins)-1,primaryBins)
-        print "working on variable   ",str(variable[0]),"for htemp"+str(process)+str(urnum)
         unrollCut=""
 
         for extraVarnum in range(1,len(variable)):
             unrollCut += "&&"+str(variable[extraVarnum])+">"+str(bincuts[extraVarnum-1][0])+"&&"+str(variable[extraVarnum])+"<"+str(bincuts[extraVarnum-1][1])
         if procut:
             allcuts = "("+str(cat.cuts)+"&&"+str(cat.cuts["preselection"])+"&&"+str(cat.cuts["trigger"])+"&&"+str(HAA_ProCuts[process])+unrollCut+")"
-            #print "entries after cut  ",tree.GetEntries(allcuts)
             tree.Draw(str(variable[0])+">>"+"htemp"+str(process)+str(urnum),allcuts+weight)
         else:
             allcuts = "("+str(cat.cuts)+"&&"+str(cat.cuts["preselection"])+"&&"+str(cat.cuts["trigger"])+unrollCut+")"
-            #print "entries after cut  ",tree.GetEntries(allcuts)
             tree.Draw(str(variable[0])+">>"+"htemp"+str(process)+str(urnum),allcuts+weight)
 
         histList.append(htmp)
         htmp.Write(htmp.GetName(),ROOT.TObject.kOverwrite)
         urnum+=1
-        #print "htmp entries  ",htmp.GetEntries()
-        #print allcuts
         htmp=0
     #next create a list of histograms and try to chain them together bin by bin.
     masterbins = cat.binning[numvar][0]*len(combos)
-    print masterbins
     masterUnroll = ROOT.TH1D(str(process)+"_unrolled",str(process)+"_unrolled",len(masterbins),0,len(masterbins))
     masterBinNum=0
     for hist in histList:
         for bin in range(0,hist.GetNbinsX()+1):
             masterUnroll.SetBinContent(masterBinNum,hist.GetBinContent(bin))
-            #print "bin    ",masterBinNum,"    bin content ",hist.GetBinContent(bin)
             masterUnroll.SetBinError(masterBinNum,hist.GetBinError(bin))
             masterBinNum+=1
 
@@ -233,31 +208,263 @@ def ptFun(pt,numpyArr):
     #    newArr[val] = pt.GetBinContent(pt.FindBin(numpyArr[val]))
     return newArr
 
+#####
+def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
+                    nickname,histodict,weightstring,commonweight,datadrivenPackage,
+                    verbose,test,weightHisto,jetWeightMultiplicity,finalDistributions):
 
-def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,nickname,histodict,weightstring,commonweight,datadrivenPackage,verbose,test,weightHisto,jetWeightMultiplicity):
+    masterArray = tree.arrays()
+    #only works for one category at a time for now...
+    #for cat in allcats.keys():
+
+    #    for process in processObj.cuts.keys():
+    procut = processObj.cuts[process]
+    cuts=[]
+    for cuttype in allcats[cat].cuts.keys():
+        for cut in allcats[cat].cuts[cuttype]:
+            cuts.append(cut)
+    if procut!="":
+        cuts.append(procut[0])
+
+    masterArray["finalweight"]=np.full(len(masterArray["evt"]),1.0)
+    skimArray={}
+
+
+    if process=="data_obs":
+        print cuts
+        mask = cutOnArray(masterArray,cuts)
+        masterArray["mask"]=mask
+        masterArray["finalweight"] *= mask.astype(int)
+        weightfinal = 1.0   #don't weight the data!!
+
+        #after weight mask what to do ... can I apply it to a new tree? Like array to tree
+        # maybe use aray 2 tree after selecting master array where the weight is 0??
+        #apply the cuts to the tree
+        print mask
+        skipEvents = np.where(mask==False)[0]
+        np.set_printoptions(threshold=10000)
+        print skipEvents
+        #skimArray = masterArray[masterArray["finalweight"]==0]
+        #Trimming the variables ... to only ones in the category file
+        skimArray={}
+        print("before skim", len(masterArray["finalweight"]))
+        for key in masterArray.keys():
+            skimArray[key] = masterArray[key][mask]
+        print("after skim", len(skimArray["mll"]))
+        # Add final wieght branch
+        #weightBranch = ROOT.TBranch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Branch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Fill()
+        #where do I skim though???
+
+        for key in skimArray.keys():
+            if key not in allcats[cat].vars.keys() and key != "finalweight":
+                del skimArray[key]
+
+
+
+
+
+    if(process=="FF" and datadrivenPackage["bool"]):
+        tempmask=np.full(len(masterArray["evt"]),1.0)
+
+        #the actual events that pass the FF_1 criteria
+        # these cuts need to be for leg 1...
+        #need all the processes ...???
+        tempmask_1 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_1"])
+        tempmask_1 = tempmask.astype(int)
+        tempmask_2 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_2"])
+        tempmask_2 = tempmask.astype(int)
+        tempmask_12 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_12"])
+        tempmask_12 = tempmask.astype(int)
+
+        #FF_1
+        #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
+        fitmask_1 = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
+        fitmask_1 = fitmask_1.astype(int)
+        ptarr_1 = masterArray["pt_3"]
+
+        #get pt binned value per event... unfortunately need a loop here
+        ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
+        ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
+
+        #replace 0s with constant fit value
+        ffweight_1 *= fitmask_1
+        ffweight_1[np.where(ffweight_1==0)] =  datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0))
+        ffweight_1 *= tempmask_1
+
+        #FF_2
+        fitmask_2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
+        fitmask_2 = fitmask.astype(int)
+        ptarr_2 = masterArray["pt_4"]
+        #ptarr *= tempmask
+
+        #get pt binned value per event... unfortunately need a loop here
+        ffweight_2 = ptFun(datadrivenPackage["fakerate2"],ptarr_2)
+        ffweight_2 = ffweight_2/(1.0000000001 - ffweight_2)
+        #apply fit mask
+        #ffweight *= fitmask
+
+        #replace 0s with constant fit value
+        ffweight_2 *= fitmask_2
+        ffweight_2[np.where(ffweight_2==0)] =  datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0))
+        ffweight_2 *= tempmask_2
+
+        ffweight_12 = ffweight_1 * ffweight_2
+        #apply fit mask for _12 both legs ... how is this done?
+        fitmask_12 = fitmask_1
+        fitmask_12 *= fitmask_2
+
+        #concatenating the ffweights
+        ffweight *= fitmask_2
+        ffweight *= fitmask_12
+
+        masterArray["finalweight"] *= ffweight
+        masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
+
+        skipEvents = np.where(masterArray["finalweight"]==0)[0]
+        #skimArray = masterArray[masterArray["finalweight"]==0]
+        #Trimming the variables ... to only ones in the category file
+        skimArray={}
+        print("before skim", len(masterArray["finalweight"]))
+        for key in masterArray.keys():
+            skimArray[key] = masterArray[key][mask]
+        print("after skim", len(skimArray["mll"]))
+        # Add final wieght branch
+        #weightBranch = ROOT.TBranch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Branch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Fill()
+        #where do I skim though???
+
+        for key in skimArray.keys():
+            if key not in allcats[cat].vars.keys() and key != "finalweight":
+                del skimArray[key]
+
+    #if process!="data_obs" and len(tree)!=0:
+    if process not in ["data_obs","FF","FF_1","FF_2","FF_12"]:
+        mask = cutOnArray(masterArray,cuts)
+        masterArray["mask"]=mask
+        masterArray["finalweight"] *= mask.astype(int)
+        weightDict = processObj.weights
+        weightfinal = commonweight
+        for scalefactor in weightDict.keys():
+            #if scalefactor == "nevents":
+            #    weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
+            if scalefactor == "kfactor":
+                weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
+            elif scalefactor in ["PU"]:
+                masterArray["finalweight"] *= (returnArray(masterArray,weightDict[scalefactor]))
+            elif scalefactor =="theoryXsec":
+                weightfinal =  weightfinal * float(weightDict[scalefactor])
+            #else:
+            #    weightfinal =  weightfinal * float(weightDict[scalefactor])
+
+        #if nickname in ["DYJetsToLLM10to50","DYJetsToLLext1","DYJetsToLLext2"]:
+        if nickname =="DY1JetsToLL":
+            norm1 = jetWeightMultiplicity["DYJetsToLLext1"]/HAA_processes["DYJetsToLLext1"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["DY1JetsToLL"]/HAA_processes["DY1JetsToLL"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        if nickname =="DY2JetsToLL":
+            norm1 = jetWeightMultiplicity["DYJetsToLLext1"]/HAA_processes["DYJetsToLLext1"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["DY2JetsToLL"]/HAA_processes["DY2JetsToLL"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        if nickname =="DY3JetsToLL":
+            norm1 = jetWeightMultiplicity["DYJetsToLLext1"]/HAA_processes["DYJetsToLLext1"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["DY3JetsToLL"]/HAA_processes["DY3JetsToLL"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        if nickname =="DY4JetsToLL":
+            norm1 = jetWeightMultiplicity["DYJetsToLLext1"]/HAA_processes["DYJetsToLLext1"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["DY4JetsToLL"]/HAA_processes["DY4JetsToLL"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        if nickname =="W1JetsToLNu":
+            norm1 = jetWeightMultiplicity["WJetsToLNu"]/HAA_processes["WJetsToLNu"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["W1JetsToLNu"]/HAA_processes["W1JetsToLNu"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        elif nickname =="W2JetsToLNu":
+            norm1 = jetWeightMultiplicity["WJetsToLNu"]/HAA_processes["WJetsToLNu"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["W2JetsToLNu"]/HAA_processes["W2JetsToLNu"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+        elif nickname =="W3JetsToLNu":
+            norm1 = jetWeightMultiplicity["WJetsToLNu"]/HAA_processes["WJetsToLNu"].weights["xsec"]
+            norm2 = jetWeightMultiplicity["W3JetsToLNu"]/HAA_processes["W3JetsToLNu"].weights["xsec"]
+            weightfinal = weightfinal * 1/(norm1+norm2)
+
+        ##solve the ext sample case!!!
+        else:
+            weightfinal = weightfinal * HAA_processes[nickname].weights["xsec"]/ weightHisto.GetSumOfWeights()
+
+        #multiply by scalar weight
+        masterArray["finalweight"] *= weightfinal
+        #
+        eventWeightDict = processObj.eventWeights
+        if eventWeightDict:
+            for scalefactor in eventWeightDict.keys():
+
+                cutlist = eventWeightDict[scalefactor][0]
+
+                weightMask=cutOnArray(masterArray,cutlist)
+                weightMask=weightMask.astype(float)
+
+                if type(eventWeightDict[scalefactor][1][0])==float:
+                    weightMask *= eventWeightDict[scalefactor][1][0]
+
+                if hasattr(eventWeightDict[scalefactor][1][0],'__call__'):
+                    arguments = eventWeightDict[scalefactor][1][1]
+                    tempvals=[]
+
+                    for ag in arguments:
+                       tempvals.append(returnArray(masterArray,ag))
+                    weightMask*= eventWeightDict[scalefactor][1][0](*tempvals)
+
+                #preseving the events that don't need new weight
+                weightMask[np.where(weightMask ==0.0)]=1.0
+                masterArray["finalweight"] *= weightMask
+        skipEvents = np.where(mask==0)[0]
+        #skimArray = masterArray[masterArray["finalweight"]==0]
+        #Trimming the variables ... to only ones in the category file
+        skimArray={}
+        print("before skim", len(masterArray["finalweight"]))
+        for key in masterArray.keys():
+            skimArray[key] = masterArray[key][mask]
+        print("after skim", len(skimArray["mll"]))
+        # Add final wieght branch
+        #weightBranch = ROOT.TBranch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Branch("finalweight",masterArray["finalweight"],"finalweight/F")
+        #tree.Fill()
+        #where do I skim though???
+
+        for key in skimArray.keys():
+            if key not in allcats[cat].vars.keys() and key != "finalweight":
+                del skimArray[key]
+
+    return skimArray
+
+def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,
+                    nickname,histodict,weightstring,commonweight,datadrivenPackage,
+                    verbose,test,weightHisto,jetWeightMultiplicity):
+
 
     newVarVals={}
     for var in HAA_Inc_mmmt.newvariables.keys():
         newVarVals[var]=0.0
 
-    #print "categories   ",allcats.keys()
-    #print "process obj  ",processObj.nickname
+    #print("categories   ",allcats.keys())
+    #print("process obj  ",processObj.nickname)
     #
     #for cat in allcats.keys():
     #    cuts = []
     #    for cuttype in allcats[cat].cuts.keys():
     #        for cut in allcats[cat].cuts[cuttype]:
     #            cuts.append(cut)
-    #    print "category ",cat
-    #    print "cat cuts",cuts
-    #    print "process obj cuts ",processObj.cuts
-    #print "all cuts ",cuts
+    #    print("category ",cat)
+    #    print("cat cuts",cuts)
+    #    print("process obj cuts ",processObj.cuts)
+    #print("all cuts ",cuts)
 
-    #to dataframe?
     masterArray = tree.arrays()
 
-    #creating final weight
-    #scalar weight
+
+
 
     for cat in allcats.keys():
 
@@ -274,28 +481,19 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
             masterArray["finalweight"]=np.full(len(masterArray["evt"]),1.0)
 
             if process not in ["data_obs","FF","FF_1","FF_2","FF_12"]:
-                print cuts
+                print(cuts)
                 mask = cutOnArray(masterArray,cuts)
-                #np.set_printoptions(threshold=sys.maxsize)
-                #print "full mask before weights ",mask
-                #np.set_printoptions(threshold=1000)
                 masterArray["mask"]=mask
                 masterArray["finalweight"] *= mask.astype(int)
-                #np.set_printoptions(threshold=sys.maxsize)
-                #print "full weight after mask ",masterArray["finalweight"]
-                #np.set_printoptions(threshold=1000)
 
             if process=="data_obs":
                 mask = cutOnArray(masterArray,cuts)
-                #np.set_printoptions(threshold=sys.maxsize)
-                #print "full mask before weights ",mask
-                #np.set_printoptions(threshold=1000)
                 masterArray["mask"]=mask
                 masterArray["finalweight"] *= mask.astype(int)
                 weightfinal = 1.0   #don't weight the data!!
 
 
-            #print "working on ",process
+            #print("working on ",process)
             if process not in ["data_obs","FF","FF_1","FF_2","FF_12"]:
                 weightDict = processObj.weights
                 weightfinal = commonweight
@@ -347,7 +545,6 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
 
                 #multiply by scalar weight
                 masterArray["finalweight"] *= weightfinal
-                #masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
 
             if(process=="FF" and datadrivenPackage["bool"]):
                 tempmask=np.full(len(masterArray["evt"]),1.0)
@@ -361,8 +558,6 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
                 tempmask_2 = tempmask.astype(int)
                 tempmask_12 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_12"])
                 tempmask_12 = tempmask.astype(int)
-                #np.set_printoptions(threshold=sys.maxsize)
-                #print "ff1 tempmask ",tempmask
 
                 #FF_1
                 #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
@@ -373,13 +568,11 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
                 #get pt binned value per event... unfortunately need a loop here
                 ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
                 ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
-                #print "bincontent ffweight ", ffweight_1
 
                 #replace 0s with constant fit value
                 ffweight_1 *= fitmask_1
                 ffweight_1[np.where(ffweight_1==0)] =  datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0))
                 ffweight_1 *= tempmask_1
-                #print "final ffweight ", ffweight_1
 
                 #FF_2
                 fitmask_2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
@@ -411,8 +604,6 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
                 masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
 
                 for var in newVarVals.keys():
-                    #print allcats[cat].newvariables[var][1]
-                    #print var+":"+allcats[cat].name+":"+process
                     arguments = allcats[cat].newvariables[var][2]
                     tempvals=[]
 
@@ -423,204 +614,14 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
 
 
                 for variableHandle in allcats[cat].vars.keys():
-                    #move this outside variables
 
-                    #obtaining the right variable... WHAT about changed variables in the event!!?
-                    #val = returnValue(evt,allcats[cat].vars[variableHandle][0])
                     val = returnArray(masterArray,allcats[cat].vars[variableHandle][0])
                     filedict[variableHandle].cd()
                     filedict[variableHandle].cd(allcats[cat].name)
-                    #Fix the weight problem!!!
-                    #print "filling histogram ",variableHandle," summed entries ",np.sum(val*masterArray["finalweight"])
                     root_numpy.fill_hist(histodict[variableHandle+":"+allcats[cat].name+":"+process],val,masterArray["finalweight"])
 
                 continue
 
-            if(process=="FF_1" and datadrivenPackage["bool"]):
-                tempmask=np.full(len(masterArray["evt"]),1.0)
-
-                #the actual events that pass the FF_1 criteria
-                tempmask = cutOnArray(masterArray,processObj.cuts["FF_1"])
-                tempmask = tempmask.astype(int)
-                #np.set_printoptions(threshold=sys.maxsize)
-                #print "ff1 tempmask ",tempmask
-
-                #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
-                fitmask = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
-                fitmask = fitmask.astype(int)
-                ptarr = masterArray["pt_3"]
-                #ptarr *= tempmask
-                #ptarr *= fitmask
-                np.set_printoptions(threshold=sys.maxsize)
-
-                #get pt binned value per event... unfortunately need a loop here
-                ffweight = ptFun(datadrivenPackage["fakerate1"],ptarr)
-                ffweight = ffweight/(1.0000000001 - ffweight)
-                print "bincontent ffweight ", ffweight
-                #apply fit mask
-                ##print "full mask before weights ",mask
-                #np.set_printoptions(threshold=1000)
-                np.set_printoptions(threshold=sys.maxsize)
-
-                #replace 0s with constant fit value
-                ffweight *= fitmask
-                ffweight[np.where(ffweight==0)] =  datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0))
-                ffweight *= tempmask
-                print "final ffweight ", ffweight
-
-                #weightfinal = 0.025/(1-0.025) # from previous paper const
-                #weightfinal = datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)) #const for now
-                masterArray["finalweight"] *= ffweight
-                masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
-
-                for var in newVarVals.keys():
-                    #print allcats[cat].newvariables[var][1]
-                    #print var+":"+allcats[cat].name+":"+process
-                    arguments = allcats[cat].newvariables[var][2]
-                    tempvals=[]
-
-                    for ag in arguments:
-                       tempvals.append(returnArray(masterArray,ag))
-
-                    root_numpy.fill_hist(newhistodict[var+":"+allcats[cat].name+":"+process],functs[allcats[cat].newvariables[var][0]](*tempvals),masterArray["finalweight"])
-
-
-                for variableHandle in allcats[cat].vars.keys():
-                    #move this outside variables
-
-                    #obtaining the right variable... WHAT about changed variables in the event!!?
-                    #val = returnValue(evt,allcats[cat].vars[variableHandle][0])
-                    val = returnArray(masterArray,allcats[cat].vars[variableHandle][0])
-                    filedict[variableHandle].cd()
-                    filedict[variableHandle].cd(allcats[cat].name)
-                    #Fix the weight problem!!!
-                    #print "filling histogram ",variableHandle," summed entries ",np.sum(val*masterArray["finalweight"])
-                    root_numpy.fill_hist(histodict[variableHandle+":"+allcats[cat].name+":"+process],val,masterArray["finalweight"])
-
-                continue
-
-            if(process=="FF_2" and datadrivenPackage["bool"]):
-                #the actual events that pass the FF_1 criteria
-                tempmask=np.full(len(masterArray["evt"]),1.0)
-                tempmask = cutOnArray(masterArray,processObj.cuts["FF_2"])
-                tempmask = tempmask.astype(int)
-                print "ff1 tempmask ",tempmask
-
-
-                #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
-                fitmask = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
-                fitmask = fitmask.astype(int)
-                ptarr = masterArray["pt_4"]
-                #ptarr *= tempmask
-
-                #get pt binned value per event... unfortunately need a loop here
-                ffweight = ptFun(datadrivenPackage["fakerate2"],ptarr)
-                ffweight = ffweight/(1.0000000001 - ffweight)
-                #apply fit mask
-                #ffweight *= fitmask
-
-                #replace 0s with constant fit value
-                ffweight *= fitmask
-                ffweight[np.where(ffweight==0)] =  datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0))
-                ffweight *= tempmask
-
-                #weightfinal = 0.025/(1-0.025) # from previous paper const
-                #weightfinal = datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)) #const for now
-                masterArray["finalweight"] *= ffweight
-                masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
-
-
-                for var in newVarVals.keys():
-                    #print allcats[cat].newvariables[var][1]
-                    #print var+":"+allcats[cat].name+":"+process
-                    arguments = allcats[cat].newvariables[var][2]
-                    tempvals=[]
-
-                    for ag in arguments:
-                       tempvals.append(returnArray(masterArray,ag))
-
-                    root_numpy.fill_hist(newhistodict[var+":"+allcats[cat].name+":"+process],functs[allcats[cat].newvariables[var][0]](*tempvals),masterArray["finalweight"])
-
-
-                for variableHandle in allcats[cat].vars.keys():
-                    #move this outside variables
-
-                    #obtaining the right variable... WHAT about changed variables in the event!!?
-                    #val = returnValue(evt,allcats[cat].vars[variableHandle][0])
-                    val = returnArray(masterArray,allcats[cat].vars[variableHandle][0])
-                    filedict[variableHandle].cd()
-                    filedict[variableHandle].cd(allcats[cat].name)
-                    #Fix the weight problem!!!
-                    #print "filling histogram ",variableHandle," summed entries ",np.sum(val*masterArray["finalweight"])
-                    root_numpy.fill_hist(histodict[variableHandle+":"+allcats[cat].name+":"+process],val,masterArray["finalweight"])
-
-
-                continue
-
-            if(process=="FF_12" and datadrivenPackage["bool"]):
-                #the actual events that pass the FF_1 criteria
-                tempmask=np.full(len(masterArray["evt"]),1.0)
-                tempmask = cutOnArray(masterArray,processObj.cuts["FF_12"])
-                tempmask = tempmask.astype(int)
-
-                #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
-                fitmask = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
-                fitmask = fitmask.astype(int)
-
-                fitmask2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
-                fitmask2 = fitmask2.astype(int)
-
-                ptarr = masterArray["pt_3"]
-                ptarr2 = masterArray["pt_4"]
-                #ptarr *= tempmask
-                #ptarr2 *= tempmask2
-
-                #get pt binned value per event... unfortunately need a loop here
-                ffweight = ptFun(datadrivenPackage["fakerate1"],ptarr)
-                ffweight2 = ptFun(datadrivenPackage["fakerate2"],ptarr2)
-
-                ffweight = ffweight/(1.0000000001 - ffweight)
-                ffweight2 = ffweight2/(1.0000000001 - ffweight2)
-
-                ffweight = ffweight * ffweight2
-                #apply fit mask
-                fitmask *= fitmask2
-                ffweight *= fitmask
-
-                #replace 0s with constant fit value
-                ffweight[np.where(ffweight==0)] =  (datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0)))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0)))
-                ffweight *= tempmask
-
-                #weightfinal = 0.025/(1-0.025) # from previous paper const
-                #weightfinal = datadrivenPackage["pseudofit1"].Eval(evt.pt_3)/(1.0000001-datadrivenPackage["pseudofit1"].Eval(evt.pt_3)) #const for now
-                masterArray["finalweight"] *= ffweight
-                masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
-
-                for var in newVarVals.keys():
-                    #print allcats[cat].newvariables[var][1]
-                    #print var+":"+allcats[cat].name+":"+process
-                    arguments = allcats[cat].newvariables[var][2]
-                    tempvals=[]
-
-                    for ag in arguments:
-                       tempvals.append(returnArray(masterArray,ag))
-
-                    root_numpy.fill_hist(newhistodict[var+":"+allcats[cat].name+":"+process],functs[allcats[cat].newvariables[var][0]](*tempvals),masterArray["finalweight"])
-
-
-                for variableHandle in allcats[cat].vars.keys():
-                    #move this outside variables
-
-                    #obtaining the right variable... WHAT about changed variables in the event!!?
-                    #val = returnValue(evt,allcats[cat].vars[variableHandle][0])
-                    val = returnArray(masterArray,allcats[cat].vars[variableHandle][0])
-                    filedict[variableHandle].cd()
-                    filedict[variableHandle].cd(allcats[cat].name)
-                    #Fix the weight problem!!!
-                    #print "filling histogram ",variableHandle," summed entries ",np.sum(val*masterArray["finalweight"])
-                    root_numpy.fill_hist(histodict[variableHandle+":"+allcats[cat].name+":"+process],val,masterArray["finalweight"])
-
-                continue
 
             if process!="data_obs" and len(tree)!=0:
                 eventWeightDict = processObj.eventWeights
@@ -632,7 +633,6 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
                         weightMask=cutOnArray(masterArray,cutlist)
                         weightMask=weightMask.astype(float)
 
-                        #print "update to finalWeight ",masterArray["finalweight"]
                         if type(eventWeightDict[scalefactor][1][0])==float:
                             weightMask *= eventWeightDict[scalefactor][1][0]
 
@@ -646,18 +646,9 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
 
                         #preseving the events that don't need new weight
                         weightMask[np.where(weightMask ==0.0)]=1.0
-                        #print "weight mask ",weightMask
-                        #updating the finalweight
                         masterArray["finalweight"] *= weightMask
-                        #masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0
-            #np.set_printoptions(threshold=sys.maxsize)
-            ##print "full mask before weights ",mask
-            #print " weights ",masterArray["finalweight"]
-            #np.set_printoptions(threshold=1000)
 
             for var in newVarVals.keys():
-                #print allcats[cat].newvariables[var][1]
-                #print var+":"+allcats[cat].name+":"+process
                 arguments = allcats[cat].newvariables[var][2]
                 tempvals=[]
 
@@ -676,7 +667,6 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,ni
                 filedict[variableHandle].cd()
                 filedict[variableHandle].cd(allcats[cat].name)
                 #Fix the weight problem!!!
-                #print "filling histogram ",variableHandle," summed entries ",np.sum(val*masterArray["finalweight"])
                 root_numpy.fill_hist(histodict[variableHandle+":"+allcats[cat].name+":"+process],val,masterArray["finalweight"])
 
 
@@ -699,6 +689,7 @@ if __name__ == "__main__":
     from utils.Weights import CommonWeights
     from utils.Weights import HAAWeights
 
+    sys.path.insert(1, '/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src')
     from TauPOG.TauIDSFs.TauIDSFTool import TauIDSFTool
     from TauPOG.TauIDSFs.TauIDSFTool import TauESTool
     from TauPOG.TauIDSFs.TauIDSFTool import TauFESTool
@@ -729,6 +720,7 @@ if __name__ == "__main__":
     parser.add_argument("-ff",  "--makeFakeHistos", default=False,action='store_true',  help="Just make fake rate histos")
     parser.add_argument("-v",  "--verbose", default=False,action='store_true',  help="print per event")
     parser.add_argument("-t",  "--test", default=False,action='store_true',  help="only do 1 event to test code")
+    parser.add_argument("-s",  "--skim", default=False,action='store_true',  help="skim input files to make more TTrees")
     parser.add_argument("-mt",  "--mt", default=False,action='store_true',  help="Use Multithreading")
     parser.add_argument("-pt",  "--maxprint", default=False,action='store_true',  help="Print Info on cats and processes")
     args = parser.parse_args()
@@ -773,8 +765,8 @@ if __name__ == "__main__":
     allcats={}
 
     for category in categories:
-        #print category
-        #print categories[category]['name']
+        #print(category)
+        #print(categories[category]['name'])
         tempcat = Category()
         tempcat.name=categories[category]['name']
         tempcat.cuts=categories[category]['cuts']
@@ -788,7 +780,7 @@ if __name__ == "__main__":
     #place fake rate here
     if not (args.datadrivenZH):
         for sample in sampleDict.keys():
-            #print processes[process]
+            #print(processes[process])
             temppro = Process()
             temppro.nickname=sample
             temppro.file=sample+"_2016.root"
@@ -808,7 +800,7 @@ if __name__ == "__main__":
 
     if (args.datadrivenZH or args.datameasureZH):
         for sample in sampleDict.keys():
-            #print processes[process]
+            #print(processes[process])
             temppro = Process()
             temppro.nickname=sample
             temppro.file=sample+"_2016.root"
@@ -839,18 +831,18 @@ if __name__ == "__main__":
         HAA_processes[temppro.nickname]=temppro
 
     if args.maxprint:
-        print "categories "
+        print("categories ")
         for cat in allcats:
-            print cat.name
-            print cat.cuts
+            print(cat.name)
+            print(cat.cuts)
 
 
-        print "processes "
+        print("processes ")
         for pro in HAA_processes.keys():
-            print HAA_processes[pro].nickname
-            print HAA_processes[pro].cuts
-            print HAA_processes[pro].weights
-            print HAA_processes[pro].file
+            print(HAA_processes[pro].nickname)
+            print(HAA_processes[pro].cuts)
+            print(HAA_processes[pro].weights)
+            print(HAA_processes[pro].file)
 
 
 
@@ -989,8 +981,6 @@ if __name__ == "__main__":
             HAA_processes[objkey].eventWeights = EventWeights
             #HAA_processes[objkey].cuts = {sampleDict[HAA_processes[objkey].nickname][0]:""}
             #HAA_processes[objkey].cuts["prompt"] = [["gen_match_3","!=",0],["gen_match_4","!=",0]] # doing this in other script
-            print HAA_processes[objkey].nickname+"_2016"
-    print "added SF weights"
 
     #for testing only... one cat a15
     #HAA_processes=HAA_processes_test
@@ -1003,13 +993,12 @@ if __name__ == "__main__":
         for proObj in HAA_processes.keys():
            filelist[proObj]=HAA_processes[proObj].file
 
-    print filelist
 
     if (args.datameasureZH):
         try:
             os.mkdir("FFhistos_"+str(args.ffout))
         except:
-            print "directory exists"
+            print("directory exists")
         for proObj in HAA_processes.keys():
             #if proObj!="data":  #isn't this right ... we want Prompt MC contribution
             if proObj!="data" and proObj!="FF":  #isn't this right ... we want Prompt MC contribution
@@ -1021,8 +1010,8 @@ if __name__ == "__main__":
                 HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
         for category in allcats.keys():
             #if allcats[category].name=="_inclusive":
-            print allcats[category].name
-            print "_inclusive" in allcats[category].name
+            print(allcats[category].name)
+            print("_inclusive" in allcats[category].name)
             if "_inclusive" in allcats[category].name:
                 del allcats[category]
     elif (args.datadrivenZH):
@@ -1038,101 +1027,95 @@ if __name__ == "__main__":
         for category in allcats.keys():
             #if allcats[category].name!="_inclusive":
             if "_inclusive" not in allcats[category].name:
-                print "removing category ",allcats[category].name
+                print ("removing category ",allcats[category].name)
                 del allcats[category]
     else:
         for category in allcats.keys():
             if "_inclusive" not in allcats[category].name:
-                print "removing category ",allcats[category].name
+                print("removing category ",allcats[category].name)
                 del allcats[category]
 
     treename = "Events"
 
-    print "initializing histograms"
+    print("initializing histograms")
 
     try:
         os.mkdir("out"+str(args.outname))
     except:
-        print "directory exists"
+        print("directory exists")
     filedict = {}
     histodict = {}
     newhistodict = {}
     #cat=HAA_Inc_mmmt
 
     numvar=0
-    for variableHandle in allcats[allcats.keys()[0]].vars.keys():
+    if not args.skim:
+        for variableHandle in allcats[allcats.keys()[0]].vars.keys():
 
-        #variable=fullvariable.split(":") # for the unrolled cases
+            #variable=fullvariable.split(":") # for the unrolled cases
 
-        #filedict[variable[0]]=ROOT.TFile.Open(cat.name+"_"+str(variable[0])+".root","RECREATE")
-        filedict[variableHandle]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variableHandle)+".root","RECREATE")
-        #print "on variableHandle ",variableHandle
-        filedict[variableHandle].cd()
-        for cat in allcats.keys():
-            #print "Working on category.",allcats[cat].name
-            #print "With cuts ",allcats[cat].cuts
-            filedict[variableHandle].mkdir(allcats[cat].name)
-            filedict[variableHandle].cd(allcats[cat].name)
+            #filedict[variable[0]]=ROOT.TFile.Open(cat.name+"_"+str(variable[0])+".root","RECREATE")
+            filedict[variableHandle]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variableHandle)+".root","RECREATE")
+            filedict[variableHandle].cd()
+            for cat in allcats.keys():
+                filedict[variableHandle].mkdir(allcats[cat].name)
+                filedict[variableHandle].cd(allcats[cat].name)
 
-            for nickname in filelist.keys():
-                #print "for sample ",nickname
+                for nickname in filelist.keys():
 
-                processObj = HAA_processes[nickname]
+                    processObj = HAA_processes[nickname]
 
-                for process in processObj.cuts.keys():
+                    for process in processObj.cuts.keys():
 
 
-                    if filedict[variableHandle].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
-                        continue
-                    else:
-                        #bins = allcats[cat].binning[numvar]
-                        bins = allcats[cat].vars[variableHandle][1]
-                        if type(bins[0])==list:
-                            histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
-                            histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                        if filedict[variableHandle].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
+                            continue
                         else:
+                            #bins = allcats[cat].binning[numvar]
+                            bins = allcats[cat].vars[variableHandle][1]
+                            if type(bins[0])==list:
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            else:
+                                tmpbin = np.asarray(bins)
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                                histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+            numvar=numvar+1
+
+        #gathering new varibles
+        numvar=0
+        for variable in allcats[allcats.keys()[0]].newvariables.keys():
+
+            #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
+            filedict[variable]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variable)+".root","RECREATE")
+            filedict[variable].cd()
+            #for cat in allcats:
+            for cat in allcats.keys():
+                filedict[variable].mkdir(allcats[cat].name)
+                filedict[variable].cd(allcats[cat].name)
+
+                for nickname in filelist.keys():
+
+                    processObj = HAA_processes[nickname]
+
+                    for process in processObj.cuts.keys():
+
+                        if filedict[variable].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
+                            continue
+                        else:
+                            #tmpbin = np.asarray(allcats[cat].newvariablesbins[numvar])
+                            bins = allcats[allcats.keys()[0]].newvariables[variable][1]
                             tmpbin = np.asarray(bins)
-                            histodict[variableHandle+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                            histodict[variableHandle+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-        numvar=numvar+1
-
-    #gathering new varibles
-    numvar=0
-    for variable in allcats[allcats.keys()[0]].newvariables.keys():
-
-        #filedict[variable]=ROOT.TFile.Open(cat.name+"_"+str(variable)+".root","RECREATE")
-        filedict[variable]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variable)+".root","RECREATE")
-        #print "on variable ",variable
-        filedict[variable].cd()
-        #for cat in allcats:
-        for cat in allcats.keys():
-            filedict[variable].mkdir(allcats[cat].name)
-            filedict[variable].cd(allcats[cat].name)
-
-            for nickname in filelist.keys():
-
-                processObj = HAA_processes[nickname]
-
-                for process in processObj.cuts.keys():
-                    #print "process ",process,"  cuts  ",processObj.cuts[process]
-
-                    if filedict[variable].Get(allcats[cat].name).GetListOfKeys().Contains(str(process)):
-                        continue
-                    else:
-                        #tmpbin = np.asarray(allcats[cat].newvariablesbins[numvar])
-                        bins = allcats[allcats.keys()[0]].newvariables[variable][1]
-                        tmpbin = np.asarray(bins)
-                        #print variable+":"+allcats[cat].name+":"+process
-                        if  allcats[allcats.keys()[0]].newvariables[variable][-1]=="multiob":
-                            for var,ivar in enumerate(temp):
-                                newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin[ivar])-1,tmpbin[ivar])
-                                newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-                        else:
-                            newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                            newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-                        #newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
-                        #newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
-        numvar=numvar+1
+                            if  allcats[allcats.keys()[0]].newvariables[variable][-1]=="multiob":
+                                for var,ivar in enumerate(temp):
+                                    newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin[ivar])-1,tmpbin[ivar])
+                                    newhistodict[variable+"_"+str(ivar)+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            else:
+                                newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                                newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+                            #newhistodict[variable+":"+allcats[cat].name+":"+process] = ROOT.TH1D(str(process),str(process),len(tmpbin)-1,tmpbin)
+                            #newhistodict[variable+":"+allcats[cat].name+":"+process].Write(str(process),ROOT.TObject.kOverwrite)
+            numvar=numvar+1
 
     #gather extra global variables or weights
 
@@ -1166,7 +1149,6 @@ if __name__ == "__main__":
     jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
 
     #Calculate the scale factors and fill the histograms
-    #print sampleDict.keys()
     datadrivenPackage={}
     datadrivenPackage["bool"]=False
 
@@ -1303,48 +1285,131 @@ if __name__ == "__main__":
         ##pg2.Fit("pf2")
         #datadrivenPackage["pseudofit1"]=pf1
         #datadrivenPackage["pseudofit2"]=pf2
-
-
+    if args.skim:
+        Bkg = ["DY","W","TT","ST","EWK"]
+        irBkg = ["ZZ","ZHToTauTau","vbf","WHTT"]
+        TrialphaBkg = ["ttZ","ttW","WWZ","WZZ","ZZZ","WWW_4F","HZJ"]
+        rareBkg = ["Other","rare","WZ"]
+        finalDistributions = {}
+        finalDistributions["Bkg"]=Bkg
+        finalDistributions["data_obs"]=["data_obs"]
+        finalDistributions["a15"]=["a15"]
+        finalDistributions["a20"]=["a20"]
+        finalDistributions["a25"]=["a25"]
+        finalDistributions["a30"]=["a30"]
+        finalDistributions["a35"]=["a35"]
+        finalDistributions["a40"]=["a40"]
+        finalDistributions["a45"]=["a45"]
+        finalDistributions["a50"]=["a50"]
+        finalDistributions["a55"]=["a55"]
+        finalDistributions["a60"]=["a60"]
+        finalDistributions["irBkg"]=irBkg
+        finalDistributions["TrialphaBkg"]=TrialphaBkg
+        finalDistributions["rareBkg"]=rareBkg
+        #create a ttree for each of these ... ???
+        ###TTree *tree1, *tree2, *tree3; //pointers to your 3 Trees
+        ###TList *list = new TList;
+        ###list->Add(tree1);
+        ###list->Add(tree2);
+        ###list->Add(tree3);
+        ###TTree *newtree = TTree::MergeTrees(list);
+        ###newtree->SetName("newtree");
+        ###newtree->Write();
+        allSkims = {}
+        finalSkims ={}
 
 
     #Where the magic starts!
     for nickname in filelist.keys():
-        print "working on file ",filelist[nickname]
+        print("working on file ",filelist[nickname])
         frootin = ROOT.TFile.Open(dir+filelist[nickname],"read")
         fin = uproot.open(dir+filelist[nickname])
-        #dataframe
         tree = fin[treename]
         weightHisto = frootin.Get("hWeights")
         #newtree=tree.CloneTree()
-        print "tree entries ",len(tree)
+        print("tree entries ",len(tree))
+        if len(tree)==0:
+            print("tree length 0 ... skipping")
+            continue
 
         processObj = HAA_processes[nickname]
+        if args.skim:
+            #this needs to be returned per process object ...
+            #and we need the process object name to categorize it!
+            for cat in allcats.keys():
+                for process in processObj.cuts.keys():
+                    oneSkim = skimAndWeight(functs, tree, allcats[allcats.keys()[0]], cat, HAA_processes, process,
+                                    nickname, histodict, weightstring, weight, datadrivenPackage, args.verbose,
+                                    args.test, weightHisto, jetWeightMultiplicity,finalDistributions)
 
-        calculateHistos(functs, tree, allcats[allcats.keys()[0]], allcats, HAA_processes, processObj,
-                        nickname, histodict, weightstring, weight, datadrivenPackage, args.verbose,
-                        args.test, weightHisto, jetWeightMultiplicity)
+                    print("nickname ",nickname)
+                    print("process ",process)
+                    for catDist in finalDistributions.keys():
+                        for dist in finalDistributions[catDist]:
+                            if process in dist and catDist not in finalSkims:
+                                finalSkims[catDist] = oneSkim
+                            if process in dist and catDist in finalSkims:
+                                #finalSkims = {key: np.concatenate((finalSkims[key], oneSkim[key])) for key in oneSkim.keys()}
+                                for key in finalSkims[catDist].keys():
+                                    #print(finalSkims[catDist][key],oneSkim[key])
+                                    finalSkims[catDist][key]=np.concatenate((finalSkims[catDist][key],oneSkim[key]))
+                            else:
+                                continue
+        else:
+            calculateHistos(functs, tree, allcats[allcats.keys()[0]], allcats, HAA_processes, processObj,
+                            nickname, histodict, weightstring, weight, datadrivenPackage, args.verbose,
+                            args.test, weightHisto, jetWeightMultiplicity)
 
-    print "writing the histograms to the file"
-    for varcatPro in histodict.keys():
-        filedict[varcatPro.split(":")[0]].cd()
-        filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
+    if not args.skim:
+        print("writing the histograms to the file")
+        for varcatPro in histodict.keys():
+            filedict[varcatPro.split(":")[0]].cd()
+            filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
 
-        histodict[varcatPro].Write(histodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
-    print "writing the new variable histograms to the file"
-    for varcatPro in newhistodict.keys():
-        filedict[varcatPro.split(":")[0]].cd()
-        filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
-        newhistodict[varcatPro].Write(newhistodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
+            histodict[varcatPro].Write(histodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
+        print("writing the new variable histograms to the file")
+        for varcatPro in newhistodict.keys():
+            filedict[varcatPro.split(":")[0]].cd()
+            filedict[varcatPro.split(":")[0]].cd(varcatPro.split(":")[1])
+            newhistodict[varcatPro].Write(newhistodict[varcatPro].GetName(),ROOT.TObject.kOverwrite)
 
-    if args.datameasureZH:
-        #copyfile("out"+str(args.outname)+"/pt*.root", "FFhistos_"+str(args.ffout)+"/.")
-        for file in glob.glob("out"+str(args.outname)+"/pt*.root"):
-            print "copying over ",file
-            copyfile(file, "FFhistos_"+str(args.ffout)+"/"+file.split("/")[1])
+        if args.datameasureZH:
+            #copyfile("out"+str(args.outname)+"/pt*.root", "FFhistos_"+str(args.ffout)+"/.")
+            for file in glob.glob("out"+str(args.outname)+"/pt*.root"):
+                print("copying over ",file)
+                copyfile(file, "FFhistos_"+str(args.ffout)+"/"+file.split("/")[1])
+    else:
+        # Here is where we concatenate the skims as numpy arrays
+        #outline
+        # 1. check nickname of the skim
+        # 2. if nickname in group then concatenate those arrays together
+        # 3. convert final numpy array to TTree
+        #sys.exit()
+        skimFile = ROOT.TFile("skimmed_"+args.channel+".root","recreate")
+        skimFile.cd()
+
+        dataTypes =[[],[]]
+        random_sample = finalSkims.values()[0]
+        for branch in random_sample.keys():
+            dataTypes[0].append(branch)
+            dataTypes[1].append(random_sample[branch].dtype)
+        for catDist in finalSkims.keys():
+            data = np.zeros(len(finalSkims[catDist][branch]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
+            for branch in data.dtype.names:
+                print "working on branch ",branch
+                if len(finalSkims[catDist][branch].shape) == 1:   # flat array
+                    data[branch] = finalSkims[catDist][branch]
+                else:
+                    data[branch] = finalSkims[catDist][branch][:,0]
+            treeOut = root_numpy.array2tree(data, name=catDist)
+            treeOut.Write()
+        skimFile.Close()
+
+
 
     del sf_MuonId
     del sf_MuonTrig
     del sf_EleTrig
     del sf_ElectronId
-    print "computation time"
+    print("computation time")
     print(datetime.datetime.now() - begin_time)
