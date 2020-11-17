@@ -1,19 +1,26 @@
 echo "Running Fake Factor Sequence ..."
 echo "Measuring Fake Factors ..."
-python MakeDataCards_array_HAA.py -c cat_mmmt_2016.yaml -csv MCsamples_2016_v6_yaml.csv -i /afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/ -p processes_special_mmmt.yaml -dmZH -o 2016_ff_dm_mmmt -fo 2016_ff_mmmt -ch mmmt
+#common
+input=/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/
+process=processes_special_mmmt.yaml
+csv=MCsamples_2016_v6_yaml.csv
+#channel specific
+output0=2016_prompt_dm_mmmt
+output1=2016_prompt_mmmt
+fo=2016_prompt_mmmt
+cat=cat_mmmt_2016.yaml
+
+python MakeDistributions_HAA_2016.py -c $cat  -csv $csv  -i $input -p $process -dmZH -o $output0 -fo $fo -ch mmmt
 
 echo "Copying over Fake Factors ..."
-cp -r out2016_ff_dm_mmmt/pt_*.root FFhistos_2016_ff_mmmt/.
+cp -r out$output0/pt_*.root FFhistos_$fo/.
 
 echo "Applying Fake Factors ..."
-python MakeDataCards_array_HAA.py -c cat_mmmt_2016.yaml -csv MCsamples_2016_v6_yaml.csv -i /afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/ -p processes_special_mmmt.yaml -ddZH -o 2016_ff_mmmt -fi 2016_ff_mmmt -ch mmmt
+python MakeDistributions_HAA_2016.py -c $cat -csv $csv -i $input -p $process -o $output1 -ch mmmt -s -ddZH -fi $fo
 
 echo "Making Plots ..."
-python MakePlots_histos.py -i 2016_ff_mmmt -o 2016_ff_mmmt -ddZH -mhs -c cat_mmmt_2016.yaml --ch mmmt
-
+python MakePlots_skimmed.py -i skimmed_$output1.root -o $output1 -c $cat --ch mmmt -ddZH
 
 echo "Copying Plots Over ..."
-cp FFhistos_2016_ff_mmmt/*.png outplots_2016_ff_mmmt_mmmt_inclusive/.
-
-echo "Copying fake rate plots Over ..."
-cp -r outplots_2016_ff_mmmt_mmmt_inclusive /eos/home-s/shigginb/HAA_Plots/.
+cp -r FFhistos_$fo/*.png outplots_$output1/.
+cp -r outplots_$output1/ /eos/home-s/shigginb/HAA_Plots/.

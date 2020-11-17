@@ -322,13 +322,13 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         # these cuts need to be for leg 1...
         #need all the processes ...???
         tempmask_1 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_1"])
-        tempmask_1 = tempmask_1.astype(int)
+        #tempmask_1 = tempmask_1.astype(int)
         #print tempmask_1[:1000]
         tempmask_2 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_2"])
-        tempmask_2 = tempmask_2.astype(int)
+        #tempmask_2 = tempmask_2.astype(int)
         #print tempmask_2[:1000]
         tempmask_12 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_12"])
-        tempmask_12 = tempmask_12.astype(int)
+        #tempmask_12 = tempmask_12.astype(int)
         #print tempmask_12[:1000]
 
 
@@ -342,9 +342,6 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
         ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
 
-        #replace 0s with constant fit value
-        ffweight_1 *= fitmask_1
-        ffweight_1[np.where(ffweight_1==0)] =  datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0))
 
 
         #FF_2
@@ -359,11 +356,24 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         #apply fit mask
         #ffweight *= fitmask
 
+
+        #trying new ... don't replace 0s yet
+        ffweight = ffweight_1 * ffweight_2
+
         #replace 0s with constant fit value
+        ffweight_1 *= fitmask_1
+        ffweight_1[np.where(ffweight_1==0)] =  datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0))
         ffweight_2 *= fitmask_2
         ffweight_2[np.where(ffweight_2==0)] =  datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0))
 
-        #for F_12
+        #for F_12 new try ...
+        #replace 0s with constant fit value
+        ffweight[np.where(ffweight==0)] =  (datadrivenPackage["fitrate1"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate1"].GetParameter(0)))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1.0000001-datadrivenPackage["fitrate2"].GetParameter(0)))
+
+        fitmask_1 *= fitmask_2
+        ffweight *= fitmask_1
+        ffweight *= tempmask_12
+
         #ffweight_12 = ffweight_1 * ffweight_2
 
         #prior to this all the events have ff weights
@@ -371,22 +381,45 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         #ffweight_12 has correct weight where both leg fails now ...
         #ffweight_12[tempmask_1]
 
-        ffweight_1 *= tempmask_1
+        #ffweight_1[tempmask_1==False]= 0.0
+        #print "ffweight_1 ",ffweight_1[:1000]
+        ##ffweight_2 *= tempmask_2
+        #ffweight_2[tempmask_2==False]= 0.0
+
+        #ffweight_1[~tempmask_1] = 1.0
+        ffweight_1[~tempmask_1] = 0.0
         print "ffweight_1 ",ffweight_1[:1000]
-        ffweight_2 *= tempmask_2
-        intersection = np.logical_and(tempmask_1,tempmask_2)
-        ffweight_int2 = ffweight_2.copy()
-        ffweight_int2 *= intersection.astype(int)
-        ffweight_only2 = ffweight_2 - ffweight_int2
-        ffweight_1 += ffweight_only2
-        print "ffweight_only2 ",ffweight_only2[:1000]
-        ffweight_int2 *= -2.0
-        ffweight_int2[np.where(ffweight_int2==0.0)]=1.0
-        print "intersection ",ffweight_int2[:1000]
+        #ffweight_2 *= tempmask_2
+        #ffweight_2[~tempmask_2] = 1.0
+        ffweight_2[~tempmask_2] = 0.0
+        #finalWeight = ffweight_1 * ffweight_2
+        finalWeight = ffweight_1 + ffweight_2
+        intersection = np.all((tempmask_1,tempmask_2), axis=0)
+        #finalWeight[intersection] *= -1.0  flip the sign if needed although I don't think I need to
+        #finalWeight[~np.any((tempmask_1,tempmask_2), axis=0)] = 0.0
+        #finalWeight[intersection] -= 2*ffweight_1[intersection]*ffweight_2[intersection]
+        #finalWeight -= ffweight_1*ffweight_2
+
+        finalWeight -= ffweight
+
+
+        ##ffweight_1[np.where(ffweight_1<0.0)]=0.0
+        ##ffweight_2[np.where(ffweight_2<0.0)]=0.0
+        #intersection = np.logical_and(tempmask_1,tempmask_2)
+        #ffweight_int2 = ffweight_2.copy()
+        #ffweight_int2 *= intersection.astype(int)
+        #ffweight_only2 = ffweight_2 - ffweight_int2 #check this
+        #ffweight_1 += ffweight_only2
+        #print "ffweight_only2 ",ffweight_only2[:1000]
+        ##ffweight_int2 *= -2.0
+        ##ffweight_int2[np.where(ffweight_int2==0.0)]=1.0
+        ##ffweight_int2[np.where(ffweight_int2>=0.0)]=1.0 # these shouldn't be positive at all ...
+        #print "intersection ",ffweight_int2[:1000]
 
         #ffweight_1
-        ffweight_1 *= ffweight_int2
-        print "final weight ",ffweight_1[:1000]
+        #ffweight_1 *= ffweight_int2
+        #print "final weight ",ffweight_1[:1000]
+        print "final weight ",finalWeight[:1000]
 
         #ffweight_1 += ffweight_2 # we need or operation here not multi...
         #intersection = np.logical_or(ffweight_1,ffweight_2)
@@ -405,10 +438,13 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         #fitmask_12 *= fitmask_2
 
 
-        masterArray["finalweight"] *= ffweight_1
+        #masterArray["finalweight"] *= ffweight_1
+        masterArray["finalweight"] *= finalWeight
+        print "summed final weight ",np.sum(finalWeight)
         #masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0.0
 
-        skipEvents = np.where(ffweight_1==0)[0]
+        #skipEvents = np.where(ffweight_1==0)[0]
+        #mask=skipEvents
         #skimArray = masterArray[masterArray["finalweight"]==0]
         #Trimming the variables ... to only ones in the category file
         skimArray={}
@@ -426,8 +462,8 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
                 del skimArray[key]
         return skimArray
 
-    #if process!="data_obs" and len(tree)!=0:
     if process not in ["data_obs","FF","FF_1","FF_2","FF_12"]:
+    #if process!="data_obs" and len(tree)!=0:
         eventWeightDict = processObj.eventWeights
         if eventWeightDict:
             for scalefactor in eventWeightDict.keys():
@@ -447,8 +483,11 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
                        tempvals.append(returnArray(masterArray,ag))
                     weightMask*= eventWeightDict[scalefactor][1][0](*tempvals)
 
-                if scalefactor!="fake":
+                if scalefactor!="fake" and scalefactor!="fake1" and scalefactor!="fake2":
                     weightMask[np.where(weightMask==0.0)]=1.0
+                else:
+                    print "subtracting fakes "
+                    print weightMask[:1000]
                 #weightMask[np.where(weightMask ==0.0)]=1.0
 
                 masterArray["finalweight"] *= weightMask
@@ -674,6 +713,7 @@ def calculateHistos(functs,tree,HAA_Inc_mmmt,allcats,HAA_processes,processObj,
                         #preseving the events that don't need new weight
                         if scalefactor!="fake":
                             weightMask[np.where(weightMask==0.0)]=1.0
+                        #weightMask[np.where(weightMask==0.0)]=1.0
                         masterArray["finalweight"] *= weightMask
 
             for var in newVarVals.keys():
@@ -821,6 +861,30 @@ if __name__ == "__main__":
                 temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]]}
             HAA_processes[temppro.nickname]=temppro
 
+    #if (args.datadrivenZH or args.datameasureZH):
+    #    for sample in sampleDict.keys():
+    #        #print(processes[process])
+    #        temppro = Process()
+    #        temppro.nickname=sample
+    #        temppro.file=sample+"_2016.root"
+    #        temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
+    #        temppro.cuts={sampleDict[sample][0]:"","fake1_"+sampleDict[sample][0]:[["gen_match_3","==",0]],"fake2_"+sampleDict[sample][0]:[["gen_match_4","==",0]]}
+    #        if "ggTo2mu2tau" in sample:
+    #            temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
+    #        if "W" in sample and "Jets" in sample and "EWK" not in sample:
+    #            temppro.file=sample+"_2016.root"
+    #            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.221}
+    #            temppro.cuts={"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]],"fake1_W":[["gen_match_3","==",0]],"fake2_W":[["gen_match_4","==",0]]}
+    #        if "DY" in sample and "Jets" in sample:
+    #            temppro.file=sample+"_2016.root"
+    #            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.1637}
+    #        if "TT" in sample and not "TTTT" in sample and not "TTHH" in sample:
+    #            temppro.file=sample+"_2016.root"
+    #            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
+    #            temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]],"fake1_TT":[["gen_match_3","==",0]],"fake2_TT":[["gen_match_4","==",0]]}
+    #        HAA_processes[temppro.nickname]=temppro
+
+    #if (args.datadrivenZH or args.datameasureZH) and args.skim:
     if (args.datadrivenZH or args.datameasureZH):
         for sample in sampleDict.keys():
             #print(processes[process])
@@ -828,53 +892,70 @@ if __name__ == "__main__":
             temppro.nickname=sample
             temppro.file=sample+"_2016.root"
             temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
-            temppro.cuts={sampleDict[sample][0]:"","fake1_"+sampleDict[sample][0]:[["gen_match_3","==",0]],"fake2_"+sampleDict[sample][0]:[["gen_match_4","==",0]]}
-            if "ggTo2mu2tau" in sample:
-                temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
-            if "W" in sample and "Jets" in sample and "EWK" not in sample:
-                temppro.file=sample+"_2016.root"
-                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.221}
-                temppro.cuts={"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]],"fake1_W":[["gen_match_3","==",0]],"fake2_W":[["gen_match_4","==",0]]}
-            if "DY" in sample and "Jets" in sample:
-                temppro.file=sample+"_2016.root"
-                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.1637}
-            if "TT" in sample and not "TTTT" in sample and not "TTHH" in sample:
-                temppro.file=sample+"_2016.root"
-                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
-                temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]],"fake1_TT":[["gen_match_3","==",0]],"fake2_TT":[["gen_match_4","==",0]]}
-            HAA_processes[temppro.nickname]=temppro
-
-    if (args.datadrivenZH or args.datameasureZH) and args.skim:
-        for sample in sampleDict.keys():
-            #print(processes[process])
-            temppro = Process()
-            temppro.nickname=sample
-            temppro.file=sample+"_2016.root"
-            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
-            #truetau = [["OR"],["gen_match_3","!=",0],["gen_match_4","!=",0]] #does work... but where is 4l?
-            #truetau = [["gen_match_3","==",5],["gen_match_4","==",5]] # even less
-            #truetau = [["gen_match_3","!=",0],["gen_match_4","!=",0]]
-            truetau = [["OR"],
-                        ["gen_match_3","==",5],#["gen_match_3","==",4],["gen_match_3","==",5],#["gen_match_3","==",15],
-                        ["gen_match_4","==",5]#["gen_match_4","==",4],["gen_match_4","==",5] #["gen_match_4","==",15]
-                        ]
-            temppro.cuts={sampleDict[sample][0]:[truetau]}
+            if args.channel=="mmtt": ## I still need to split this by decay mode...?? More importantly, this must match the measurement part of the code!
+                #truetau = ""
+                truetau = [
+                            [["OR"],
+                            #["gen_match_3","==",5],["gen_match_3","==",1],["gen_match_3","==",2],["gen_match_3","==",3],["gen_match_3","==",4]
+                            #["gen_match_3","!=",-1],
+                            ["gen_match_3","==",5],
+                            #["gen_match_3","!=",0],
+                            #["OR"],
+                            #["gen_match_4","==",5],["gen_match_4","==",1],["gen_match_4","==",2],["gen_match_4","==",3],["gen_match_4","==",4]
+                            #["gen_match_4","!=",-1],
+                            ["gen_match_4","==",5]
+                            #["gen_match_4","!=",0]
+                            ]]
+            if args.channel=="mmem":
+                truetau = [ [["OR"],
+                            #["gen_match_3","==",15],["gen_match_3","==",22],["gen_match_3","==",1],["gen_match_3","==",4],["gen_match_3","==",5]
+                            ["gen_match_3","==",15]
+                            ],
+                            [["OR"],
+                            #["gen_match_4","==",15],["gen_match_4","==",1],["gen_match_4","==",4],["gen_match_4","==",5] #["gen_match_4","==",15]
+                            ["gen_match_4","==",15]
+                            ] ]
+            if args.channel=="mmet":
+                truetau = [ [["OR"],
+                            #["gen_match_3","==",15],["gen_match_3","==",22],["gen_match_3","==",1],["gen_match_3","==",4],["gen_match_3","==",5]
+                            ["gen_match_3","==",15]
+                            ],
+                            [
+                            #["OR"],
+                            #["gen_match_4","==",5],["gen_match_4","==",1],["gen_match_4","==",2],["gen_match_4","==",3],["gen_match_4","==",4]
+                            #["gen_match_4","==",5]
+                            ["gen_match_4","!=",-1],
+                            ["gen_match_4","!=",0]
+                            ] ]
+            if args.channel=="mmmt":
+                truetau = [[["OR"],
+                            #["gen_match_3","==",15],["gen_match_3","==",1],["gen_match_3","==",4],["gen_match_3","==",5] #["gen_match_3","==",15]
+                            ["gen_match_3","==",15]
+                            ],
+                            [
+                            #["OR"],
+                            #["gen_match_4","==",5],["gen_match_4","==",1],["gen_match_4","==",2],["gen_match_4","==",3],["gen_match_4","==",4]
+                            #["gen_match_4","==",5]
+                            ["gen_match_4","!=",-1],
+                            ["gen_match_4","!=",0]
+                            ] ]
+            temppro.cuts={sampleDict[sample][0]:truetau}
             #temppro.cuts={sampleDict[sample][0]:""}
             if "ggTo2mu2tau" in sample:
                 temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
             if "W" in sample and "Jets" in sample and "EWK" not in sample:
                 temppro.file=sample+"_2016.root"
                 temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.221}
-                temppro.cuts={"W":[truetau],"WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]],"fake1_W":[["gen_match_3","==",0]],"fake2_W":[["gen_match_4","==",0]]}
+                temppro.cuts={"W":truetau,"WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]],"fake1_W":[["gen_match_3","==",0]],"fake2_W":[["gen_match_4","==",0]]}
                 #temppro.cuts={"W":"","WL":[["gen_match_4",">=",5]],"WJ":[["gen_match_4",">",5]],"fake1_W":[["gen_match_3","==",0]],"fake2_W":[["gen_match_4","==",0]]}
             if "DY" in sample and "Jets" in sample:
                 temppro.file=sample+"_2016.root"
                 temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","kfactor":1.1637}
-                temppro.cuts={"DY":[truetau]}
+                temppro.cuts={"DY":truetau}
             if "TT" in sample and not "TTTT" in sample and not "TTHH" in sample:
                 temppro.file=sample+"_2016.root"
                 temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue"}
-                temppro.cuts={"TT":[truetau],"TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]],"fake1_TT":[["gen_match_3","==",0]],"fake2_TT":[["gen_match_4","==",0]]}
+                temppro.cuts={"TT":truetau,"TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]],"fake1_TT":[["gen_match_3","==",0]],"fake2_TT":[["gen_match_4","==",0]]}
                 #temppro.cuts={"TT":"","TTT":[["gen_match_4","==",5]],"TTL":[["gen_match_4",">=",5]],"TTJ":[["gen_match_4",">",5]],"fake1_TT":[["gen_match_3","==",0]],"fake2_TT":[["gen_match_4","==",0]]}
             HAA_processes[temppro.nickname]=temppro
 
@@ -1039,10 +1120,19 @@ if __name__ == "__main__":
     #    EventWeights["fake1"]=[[["gen_match_3","==",0]],[-1.0]]
     #    EventWeights["fake2"]=[[["gen_match_4","==",0]],[-1.0]]
     #if args.datadrivenZH and args.skim:
-        #EventWeights["fake"]=[[["gen_match_3","==",0],["gen_match_4","==",0]],[0.0]]
-        #EventWeights["fake"]=[[["gen_match_3","==",0],["gen_match_4","==",0]],[-1.0]]
-        #EventWeights["fake"]=[[[["OR"],["gen_match_3","==",0],["gen_match_4","==",0]]],[0.0]]
-        #EventWeights["fake"]=[[[["OR"],["gen_match_3","==",0],["gen_match_4","==",0]]],[-1.0]]
+    #    if args.channel=="mmmt" or args.channel=="mmet":
+    #        EventWeights["fake"]=[[["gen_match_4","==",0],[[["OR"],["gen_match_3","==",0],["gen_match_3","==",3]]]],[0.0]]
+        #if args.channel=="mmtt":
+        #    EventWeights["fake"]=[[["gen_match_3","==",0],["gen_match_4","==",0]],[0.0]]
+            #EventWeights["fake"]=[[[["OR"],["gen_match_3","==",0],["gen_match_4","==",0]]],[0.0]]
+    #    if args.channel=="mmem":
+    #        EventWeights["fake"]=[[[["OR"],["gen_match_4","==",0],["gen_match_4","==",3],["gen_match_3","==",0],["gen_match_3","==",3]]],[0.0]]
+#
+    #    else:
+    #        #EventWeights["fake"]=[[["gen_match_3","==",0],["gen_match_4","==",0]],[0.0]]
+    #        #EventWeights["fake"]=[[["gen_match_3","==",0],["gen_match_4","==",0]],[-1.0]]
+    #        EventWeights["fake"]=[[[["OR"],["gen_match_3","==",0],["gen_match_4","==",0]]],[0.0]]
+    #        #EventWeights["fake"]=[[[["OR"],["gen_match_3","==",0],["gen_match_4","==",0]]],[-1.0]]
 
 
     for objkey in HAA_processes.keys():
@@ -1069,14 +1159,46 @@ if __name__ == "__main__":
         except:
             print("directory exists")
         for proObj in HAA_processes.keys():
-            #if proObj!="data":  #isn't this right ... we want Prompt MC contribution
             if proObj!="data" and proObj!="FF" and not args.skim:
-                HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
-                HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
-                #HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","==",0]]
-                #HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","==",0]]
-                HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
-                HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
+                #this is not true for all channels ... make sure that it also matches the event cuts definition in the process object in the application
+                #commented lines work with 2016_ff plots ... hadronic tau not fully working there
+                #verify on line 863!!!
+                if args.channel=="mmmt" or args.channel=="mmet":
+                    #HAA_processes[proObj].cuts["prompt1"] = [[["OR"],["gen_match_3","!=",0],["gen_match_3","!=",3]]]
+                    #HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+                    #HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [[["OR"],["gen_match_3","==",0],["gen_match_3","==",3]]]
+                    #HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
+                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
+                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0],["gen_match_4","!=",-1]]
+                    HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","!=",15]]
+                    HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [[["OR"],["gen_match_4","==",0],["gen_match_4","==",-1]]]
+                if args.channel=="mmtt":
+                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
+                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+                    #HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
+                    #HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
+                    #HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",5]]
+                    #HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",5]]
+                    HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [[["OR"],["gen_match_3","==",0],["gen_match_3","==",-1]]]
+                    HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [[["OR"],["gen_match_4","==",0],["gen_match_4","==",-1]]]
+                if args.channel=="mmem":
+                    #HAA_processes[proObj].cuts["prompt1"] = [[["OR"],["gen_match_3","!=",0],["gen_match_3","!=",3]]]
+                    #HAA_processes[proObj].cuts["prompt2"] = [[["OR"],["gen_match_4","!=",0],["gen_match_4","!=",3]]]
+                    #HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [[["OR"],["gen_match_3","==",0],["gen_match_3","==",3]]]
+                    #HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [[["OR"],["gen_match_4","==",0],["gen_match_4","==",3]]]
+                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
+                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",15]]
+                    HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","!=",15]]
+                    HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","!=",15]]
+                else: # default case is close enough
+                    #HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
+                    #HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+                    #HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
+                    #HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
+                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
+                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+                    HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
+                    HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
         for category in allcats.keys():
             #if allcats[category].name=="_inclusive":
             print(allcats[category].name)
@@ -1088,8 +1210,6 @@ if __name__ == "__main__":
             if proObj!="data" and proObj!="FF" and not args.skim:
                 HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
                 HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
-                #HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","==",0]]
-                #HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","==",0]]
                 HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
                 HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
 
@@ -1419,10 +1539,12 @@ if __name__ == "__main__":
                                         args.test, weightHisto, jetWeightMultiplicity,finalDistributions,plottedVars)
                         for key in processSkims[process].keys():
                                     processSkims[process][key]=np.concatenate((processSkims[process][key],temp[key]))
+                print "found the following distributions ... ",processSkims.keys()
                 #now that we have all the process skims we need to combine them for the actual groups
                 print("grouping processes",nickname)
                 for catDist in finalDistributions.keys():
                     for process in finalDistributions[catDist]:
+                        print "looking for process ",process
                     #for process in processSkims.keys():
                         if (process in processSkims.keys()) and (catDist not in finalSkims):
                             print "first ",process # this happens twice ... which is bad...

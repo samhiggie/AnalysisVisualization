@@ -1,19 +1,26 @@
 echo "Running Fake Factor Sequence ..."
 echo "Measuring Fake Factors ..."
-python MakeDataCards_array_HAA.py -c cat_mmem_2016.yaml -csv MCsamples_2016_v6_yaml.csv -i /afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/ -p processes_special.yaml -dmZH -o 2016_dm_mmem -fo 2016_mmem -ch mmem
+#common
+input=/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/
+process=processes_special_mmet.yaml
+csv=MCsamples_2016_v6_yaml.csv
+#channel specific
+output0=2016_prompt_dm_mmet
+output1=2016_prompt_mmet
+fo=2016_prompt_mmet
+cat=cat_mmet_2016.yaml
+
+python MakeDistributions_HAA_2016.py -c $cat  -csv $csv  -i $input -p $process -dmZH -o $output0 -fo $fo -ch mmet
 
 echo "Copying over Fake Factors ..."
-cp -r out2016_dm_mmem/pt_*.root FFhistos_2016_mmem/.
+cp -r out$output0/pt_*.root FFhistos_$fo/.
 
 echo "Applying Fake Factors ..."
-python MakeDataCards_array_HAA.py -c cat_mmem_2016.yaml -csv MCsamples_2016_v6_yaml.csv -i /afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov6_10_2_9/src/nano6_2016/ -p processes_special.yaml -ddZH -o 2016_mmem -fi 2016_mmem -ch mmem
+python MakeDistributions_HAA_2016.py -c $cat -csv $csv -i $input -p $process -o $output1 -ch mmet -s -ddZH -fi $fo
 
 echo "Making Plots ..."
-python MakePlots_histos.py -i 2016_mmem -o 2016_mmem -ddZH -mhs -c cat_mmem_2016.yaml --ch mmem
-
+python MakePlots_skimmed.py -i skimmed_$output1.root -o $output1 -c $cat --ch mmet -ddZH
 
 echo "Copying Plots Over ..."
-cp FFhistos_2016_mmem/*.png outplots_2016_mmem_mmem_inclusive/.
-
-echo "Copying fake rate plots Over ..."
-cp -r outplots_2016_mmem_mmem_inclusive /eos/home-s/shigginb/HAA_Plots/.
+cp -r FFhistos_$fo/*.png outplots_$output1/.
+cp -r outplots_$output1/ /eos/home-s/shigginb/HAA_Plots/.
