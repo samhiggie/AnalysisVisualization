@@ -4,7 +4,8 @@ HAA_Inc_mmmt:
     name: "mmmt_inclusive"
     cuts:
         preselection: [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],["eta_4","absl",2.3],[["EQT"],["q_1","q_2"],"mult","<",0],["iso_1","<=",0.2],["iso_2","<=",0.2],["nbtag","<",1.0],["cat","==",6]]
-        categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_3","<=",0.15],["mediumId_3",">=",1],[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint]]
+        categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_3","<=",0.15],["mediumId_3",">=",1],[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint],["idDeepTau2017v2p1VSe_4",">=",*ffworkingpoint],["idDeepTau2017v2p1VSmu_4",">=",*ffworkingpoint]]
+        #categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_3","<=",0.15],["mediumId_3",">=",1],[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint]]
         #trigger: &trigger [[["OR"],["muonTriggerWord","band",2],["muonTriggerWord","band",4]]]
         #trigger: &trigger [["muonTriggerWord","band",4]]
         trigger: &trigger [[["OR"],["muonTriggerWord","band",4],["muonTriggerWord","band",8],["muonTriggerWord","band",16],["muonTriggerWord","band",32]]]
@@ -165,7 +166,8 @@ HAA_Inc_mmmt_FF_SS_2_tight:
         preselection: [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",5.],["pt_4",">",18.5],["eta_4","absl",2.3],[["EQT"],["q_1","q_2"],"mult","<",0],["iso_1","<=",0.2],["iso_2","<=",0.2],["nbtag","<",1.0]]
         categoryCuts: [["cat","==",6],[["EQT"],["q_3","q_4"],"mult",">",0],["iso_3","<=",0.15],["mediumId_3",">=",1],["nbtag","<",1.0],
     #[["OR"],["isGlobal_3",">=",1],["isTracker_3",">=",1]],
-    ["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint]]
+    ["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint],["idDeepTau2017v2p1VSe_4",">=",*ffworkingpoint],["idDeepTau2017v2p1VSmu_4",">=",*ffworkingpoint]]
+    #["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint]]
         trigger: *trigger
     vars: *ffvars
     newvariables: *newvariables

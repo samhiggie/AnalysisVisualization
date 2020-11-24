@@ -443,19 +443,13 @@ def skimAndWeight(functs,tree,HAA_Inc_mmmt,cat,HAA_processes,process,
         print "summed final weight ",np.sum(finalWeight)
         #masterArray["finalweight"][masterArray["finalweight"] < 0 ] = 0.0
 
-        #skipEvents = np.where(ffweight_1==0)[0]
+        keepEvents = ~np.where(finalWeight==0.0)[0]
         #mask=skipEvents
         #skimArray = masterArray[masterArray["finalweight"]==0]
         #Trimming the variables ... to only ones in the category file
         skimArray={}
         for key in masterArray.keys():
-            #skimArray[key] = masterArray[key][skipEvents]
-            skimArray[key] = masterArray[key]
-        # Add final wieght branch
-        #weightBranch = ROOT.TBranch("finalweight",masterArray["finalweight"],"finalweight/F")
-        #tree.Branch("finalweight",masterArray["finalweight"],"finalweight/F")
-        #tree.Fill()
-        #where do I skim though???
+            skimArray[key] = masterArray[key][keepEvents]
 
         for key in skimArray.keys():
             if key not in plottedVars and key != "finalweight":

@@ -4,7 +4,7 @@ HAA_Inc_mmem:
     name: "mmem_inclusive"
     cuts:
         preselection: &preselection [["pt_1",">",5.],["pt_2",">",5.],["pt_3",">",7.],["pt_4",">",5],["eta_3","absl",2.5],["eta_4","absl",2.4],[["EQT"],["q_1","q_2"],"mult","<",0],["iso_1","<=",0.2],["iso_2","<=",0.2],["nbtag","<",1.0],["cat","==",8]]
-        categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_4","<=",0.2],["Electron_mvaFall17V2noIso_WP90_3",">=",1],["mediumId_4",">=",1],[["OR"],["isGlobal_4",">=",1],["isTracker_4",">=",1]]]
+        categorycuts: [[["EQT"],["q_3","q_4"],"mult","<",0],["iso_4","<=",0.2],["iso_3","<=",0.15],["Electron_mvaFall17V2noIso_WP90_3",">=",1],["mediumId_4",">=",1],[["OR"],["isGlobal_4",">=",1],["isTracker_4",">=",1]]]
         trigger: &trigger [[["OR"],["muonTriggerWord","band",4],["muonTriggerWord","band",8],["muonTriggerWord","band",16],["muonTriggerWord","band",32]]]
 
     newvariables: &newvariables {
@@ -128,7 +128,7 @@ HAA_Inc_mmem_FF_SS_1_tight:
     name: "mmem_FF_SS_1_tight"
     cuts:
         preselection: *preselection
-        categoryCuts: [["cat","==",8],[["EQT"],["q_3","q_4"],"mult",">",0],["nbtag","<",1.0],["Electron_mvaFall17V2noIso_WP90_3",">=",1]]
+        categoryCuts: [["cat","==",8],[["EQT"],["q_3","q_4"],"mult",">",0],["nbtag","<",1.0],["iso_3","<=",0.15],["Electron_mvaFall17V2noIso_WP90_3",">=",1]]
         trigger: *trigger
     vars: &ffvars {
         pt_3_ff: ["pt_3",[0.0,5.0,10.0,15.0,20.0,25.0,30.0,35.0,40.0,50.0,60.0,100.0,120.0],"[Gev]","P_{T}(l_{3})"],
