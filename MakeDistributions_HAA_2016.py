@@ -844,7 +844,9 @@ if __name__ == "__main__":
             temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
             temppro.cuts={sampleDict[sample][0]:""}
             if "ggTo2mu2tau" in sample:
-                temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
+                #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001)} # SM Higgs xsec x BR Haa  for signal extraction
+                temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
             if "W" in sample and "Jets" in sample:
                 temppro.file=sample+"_2016.root"
                 temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
@@ -1207,11 +1209,12 @@ if __name__ == "__main__":
                 HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
                 HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
 
-        for category in allcats.keys():
-            #if allcats[category].name!="_inclusive":
-            if "_inclusive" not in allcats[category].name:
-                print ("removing category ",allcats[category].name)
-                del allcats[category]
+        # for inclusive cats only uncomment ... otherwise all SameSign regions etc...
+        #for category in allcats.keys():
+        #    #if allcats[category].name!="_inclusive":
+        #    if "_inclusive" not in allcats[category].name:
+        #        print ("removing category ",allcats[category].name)
+        #        del allcats[category]
     else:
         for category in allcats.keys():
             if "_inclusive" not in allcats[category].name:
@@ -1241,6 +1244,8 @@ if __name__ == "__main__":
             filedict[variableHandle]=ROOT.TFile.Open("out"+str(args.outname)+"/"+str(variableHandle)+".root","RECREATE")
             filedict[variableHandle].cd()
             for cat in allcats.keys():
+                if variableHandle not in allcats[cat].vars:
+                    continue
                 filedict[variableHandle].mkdir(allcats[cat].name)
                 filedict[variableHandle].cd(allcats[cat].name)
 
@@ -1497,6 +1502,9 @@ if __name__ == "__main__":
         finalSkims ={}
 
 
+        for cat in allcats.keys():
+            finalSkims[cat]={}
+
     #Where the magic starts!
     for nickname in filelist.keys():
         print("working on file ",filelist[nickname])
@@ -1514,6 +1522,7 @@ if __name__ == "__main__":
         if args.skim:
             print "all categories ",allcats.keys()
             for cat in allcats.keys():
+                print "working on cat ",cat
                 plottedVars = []
                 processSkims = {}
                 for var in allcats[cat].vars.keys():
@@ -1540,14 +1549,14 @@ if __name__ == "__main__":
                     for process in finalDistributions[catDist]:
                         print "looking for process ",process
                     #for process in processSkims.keys():
-                        if (process in processSkims.keys()) and (catDist not in finalSkims):
+                        if (process in processSkims.keys()) and (catDist not in finalSkims[cat]):
                             print "first ",process # this happens twice ... which is bad...
-                            finalSkims[catDist] = processSkims[process]
+                            finalSkims[cat][catDist] = processSkims[process]
                             continue
-                        elif (process in processSkims.keys()) and (catDist in finalSkims):
+                        elif (process in processSkims.keys()) and (catDist in finalSkims[cat]):
                             print "adding ",process
-                            for key in finalSkims[catDist].keys():
-                                finalSkims[catDist][key]=np.concatenate((finalSkims[catDist][key],processSkims[process][key]))
+                            for key in finalSkims[cat][catDist].keys():
+                                finalSkims[cat][catDist][key]=np.concatenate((finalSkims[cat][catDist][key],processSkims[process][key]))
                         else:
                             continue
         else:
@@ -1575,26 +1584,28 @@ if __name__ == "__main__":
                 copyfile(file, "FFhistos_"+str(args.ffout)+"/"+file.split("/")[1])
     else:
         #skimFile = ROOT.TFile("skimmed_"+args.channel+".root","recreate")
-        skimFile = ROOT.TFile("skimmed_"+args.outname+".root","recreate")
-        skimFile.cd()
+        for cat in allcats.keys():
+            skimFile = ROOT.TFile("skimmed_"+args.outname+"_"+cat+".root","recreate")
+            skimFile.cd()
 
-        dataTypes =[[],[]]
-        random_sample = finalSkims.values()[0]
-        for branch in random_sample.keys():
-            dataTypes[0].append(branch)
-            dataTypes[1].append(random_sample[branch].dtype)
-        for catDist in finalSkims.keys():
-            print "on the final dist ",catDist
-            data = np.zeros(len(finalSkims[catDist][branch]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
-            for branch in data.dtype.names:
-                print "working on branch ",branch
-                if len(finalSkims[catDist][branch].shape) == 1:   # flat array
-                    data[branch] = finalSkims[catDist][branch]
-                else:
-                    data[branch] = finalSkims[catDist][branch][:,0]
-            treeOut = root_numpy.array2tree(data, name=catDist)
-            treeOut.Write()
-        skimFile.Close()
+            dataTypes =[[],[]]
+            print finalSkims[cat].values()
+            random_sample = finalSkims[cat].values()[0]
+            for branch in random_sample.keys():
+                dataTypes[0].append(branch)
+                dataTypes[1].append(random_sample[branch].dtype)
+            for catDist in finalSkims[cat].keys():
+                print "on the final dist ",catDist
+                data = np.zeros(len(finalSkims[cat][catDist][branch]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
+                for branch in data.dtype.names:
+                    print "working on branch ",branch
+                    if len(finalSkims[cat][catDist][branch].shape) == 1:   # flat array
+                        data[branch] = finalSkims[cat][catDist][branch]
+                    else:
+                        data[branch] = finalSkims[cat][catDist][branch][:,0]
+                treeOut = root_numpy.array2tree(data, name=catDist)
+                treeOut.Write()
+            skimFile.Close()
 
 
 
