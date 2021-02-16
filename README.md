@@ -13,6 +13,17 @@ In addition, it may be useful to create new variables on the fly or cut on funct
 To create a new variable, add it to the new variables section within the category example - this interfaces with the *functions.py* script in the utils folder to create a new numpy array from existing variables.
 If implemented in the same way as the **MakeDistributions_HAA_2016.py** script the new variables can even be used in cuts on the fly.
 
+# Setup
+Setup the right scram architecture and clone then source the setup:
+```
+scram pro -n "nanov7_basic_10_6_4" CMSSW_10_6_4
+cd nanov7_basic_10_6_4/src  
+cmsenv
+git clone https://github.com/samhiggie/AnalysisVisualization.git
+cd AnalysisVisualization
+bash setup.sh
+
+```
 
 # Plotting
 The main script that controls plotting from skimmed NanoAOD is **MakeDistributions_HAA_2016.py**
