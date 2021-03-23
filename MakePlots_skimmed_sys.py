@@ -255,7 +255,8 @@ if __name__ == "__main__":
 
     #for ivar,var in enumerate(cat.vars.keys()):
     #for dist in fin.GetListOfKeys():
-    systematics = ["Nominal","scale_m_etalt1p2Up"]
+    #systematics = ["Nominal","scale_m_etalt1p2Up"]
+    systematics =[ "scale_eUp","scale_eDown","scale_m_etalt1p2Up","scale_m_etalt1p2Down","scale_m_eta1p2to2p1Up","scale_m_eta1p2to2p1Down","scale_m_etagt2p1Up","scale_m_etagt2p1Down","scale_t_1prongUp","scale_t_1prongDown","scale_t_1prong1pizeroUp","scale_t_1prong1pizeroDown","scale_t_3prongUp","scale_t_3prongDown","scale_t_3prong1pizeroUp","scale_t_3prong1pizeroDown"]
     for sys in systematics:
         histodict[sys]={}
         for distLong in dists:
