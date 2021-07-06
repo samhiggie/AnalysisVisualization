@@ -101,6 +101,7 @@ def cutOnArray(masterArray,cuts):
                     tempmask = tempmask - returnArray(masterArray,var)
 
             tempmask = ops[cut[3]](tempmask,cut[4])
+            #test
 
             mask *= tempmask.astype(bool)
             continue
@@ -321,6 +322,13 @@ def initialize(args):
         tempcat.vars=categories[category]['vars']
         #tempcat.systematics=categories[category]['systematics']
         allcats[tempcat.name]=tempcat
+        print allcats[tempcat.name].cuts
+        # if args.extract and (args.channel=="mmmt" or args.channel=="mmet":
+        #     allcats[tempcat.name].cuts["categorycuts"].append(["AMass","<=",120.0])
+        # if args.extract and args.channel=="mmtt":
+        #     allcats[tempcat.name].cuts["categorycuts"].append(["AMass","<=",130.0])
+        # if args.extract and args.channel=="mmem":
+        #     allcats[tempcat.name].cuts["categorycuts"].append(["AMass","<=",110.0])
 
     #allcats = {name: DylanCategory(cat) for name, cat in categories.items()}
 
@@ -359,7 +367,11 @@ def initialize(args):
             temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3]}
             temppro.cuts={sampleDict[sample][0]:""}
             if "ggTo2mu2tau" in sample:
-                temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                if args.extract:
+                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                    
+                else:
+                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001* 5.0)} # SM Higgs xsec x BR Haa  for signal extraction data MC control plots(AN 17029)
             HAA_processes[temppro.nickname]=temppro
@@ -393,7 +405,11 @@ def initialize(args):
             temppro.cuts={sampleDict[sample][0]:truetau} #ONLY SELECT PRMOPT FOR MC! 
             if "ggTo2mu2tau" in sample:
                 #for visualization!
-                temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)}
+                if args.extract:
+                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
+                    
+                else:
+                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
                 #
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001*5.0)} # SM Higgs xsec x BR Haax100 x 5 for DataMC control plots
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haax100 x 5 for DataMC control plots - correct control plots??
@@ -660,8 +676,8 @@ def initialize(args):
         # if args.channel!="mmem":
         ss_1_tight.Add(ss_1_tight_prompt,-1)
         ss_2_tight.Add(ss_2_tight_prompt,-1)
-        #ss_1_loose.Add(ss_1_loose_prompt,-1)
-        #ss_2_loose.Add(ss_2_loose_prompt,-1)
+        ss_1_loose.Add(ss_1_loose_prompt,-1)
+        ss_2_loose.Add(ss_2_loose_prompt,-1)
 
 
         f_1= ss_1_tight.Clone()
@@ -690,7 +706,9 @@ def initialize(args):
         fakemeasurefile = ROOT.TFile.Open("FFhistos_"+str(args.ffin)+"/fakemeasure.root","RECREATE")
         fakemeasurefile.cd()
         c=ROOT.TCanvas("canvas","",0,0,600,600)
-        ROOT.gStyle.SetOptFit()
+        #ROOT.gStyle.SetOptFit()
+        ROOT.gStyle.SetOptStat(0)
+        #ROOT.gStyle.SetOptFit(1)
         f_1.Draw()
         f_1.Fit("tf_1")
         c.SaveAs("FFhistos_"+str(args.ffin)+"/"+args.channel+"_fakerate1.png")
@@ -710,7 +728,7 @@ def initialize(args):
 
     #EventWeights = getEventWeightDicitonary()
 
-    # exit()
+    #exit()
     # ROOT.fail 
     return allcats, HAA_processes,finalDistributions,weightHistoDict,jetWeightMultiplicity,datadrivenPackage
 
@@ -781,7 +799,7 @@ def createFakeFactorHistos(allcats, inputFFile):
     
 
 
-def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systematic):
+def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systematic,args):
 
     from utils.functions import functs
     from utils.Weights import CommonWeights
@@ -806,6 +824,18 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     cuts.append(cut)
             if procut!="":
                 cuts.append(procut[0])
+            if args.extract and args.channel=="mmmt":
+                cuts.append(["AMass","<=",120.0])
+                cuts.append(["mll-mtt",">",0.0])
+            elif args.extract and args.channel=="mmtt":
+                cuts.append(["AMass","<=",130.0])
+                cuts.append(["mll-mtt",">",0.0])
+            elif args.extract and args.channel=="mmet":
+                cuts.append(["AMass","<=",120.0])
+                cuts.append(["mll-mtt",">",0.0])
+            elif args.extract and args.channel=="mmem":
+                cuts.append(["AMass","<=",110.0])
+                cuts.append(["mll-mtt",">",0.0])
             #print(process)
             #print(process.cuts)
             #print(masterArray.keys())
@@ -882,11 +912,35 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 tempmask=np.full(len(masterArray["evt"]),1.0)
 
                 #the actual events that pass the FF_1 criteria
-                tempmask_1 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_1"])
+                cuts_1 = HAA_processes["FF"].cuts["FF_1"]
+                cuts_2 = HAA_processes["FF"].cuts["FF_2"]
+                cuts_12 = HAA_processes["FF"].cuts["FF_12"]
+                if args.extract and (args.channel=="mmmt" or args.channel=="mmet"):
+                    cuts_1.append(["AMass","<=",120.0])
+                    cuts_1.append(["mll-mtt",">",0.0])
+                    cuts_2.append(["AMass","<=",120.0])
+                    cuts_2.append(["mll-mtt",">",0.0])
+                    cuts_12.append(["AMass","<=",120.0])
+                    cuts_12.append(["mll-mtt",">",0.0])
+                if args.extract and args.channel=="mmtt":
+                    cuts_1.append(["AMass","<=",130.0])
+                    cuts_1.append(["mll-mtt",">",0.0])
+                    cuts_2.append(["AMass","<=",130.0])
+                    cuts_2.append(["mll-mtt",">",0.0])
+                    cuts_12.append(["AMass","<=",130.0])
+                    cuts_12.append(["mll-mtt",">",0.0])
+                if args.extract and args.channel=="mmem":
+                    cuts_1.append(["AMass","<=",110.0])
+                    cuts_1.append(["mll-mtt",">",0.0])
+                    cuts_2.append(["AMass","<=",110.0])
+                    cuts_2.append(["mll-mtt",">",0.0])
+                    cuts_12.append(["AMass","<=",110.0])
+                    cuts_12.append(["mll-mtt",">",0.0])
+                tempmask_1 = cutOnArray(masterArray,cuts_1)
                 #print tempmask_1[:1000]
-                tempmask_2 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_2"])
+                tempmask_2 = cutOnArray(masterArray,cuts_2)
                 #print tempmask_2[:1000]
-                tempmask_12 = cutOnArray(masterArray,HAA_processes["FF"].cuts["FF_12"])
+                tempmask_12 = cutOnArray(masterArray,cuts_12)
                 #print tempmask_12[:1000]
 
 
@@ -894,24 +948,24 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
                 #fitmask_1 = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
                 #fitmask_1 = fitmask_1.astype(int)
-                #ptarr_1 = masterArray["pt_3"]
+                ptarr_1 = masterArray["pt_3"]
 
-                #ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
-                #ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
+                ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
+                ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
                 #ffweight_1 = np.ones(len(ffweight_1))*(0.153/(1-0.153))
-                ffweight_1 = np.ones(len(tempmask_1))*(datadrivenPackage["fitrate1"].GetParameter(0)/(1-datadrivenPackage["fitrate1"].GetParameter(0)))
+                #ffweight_1 = np.ones(len(tempmask_1))*(datadrivenPackage["fitrate1"].GetParameter(0)/(1-datadrivenPackage["fitrate1"].GetParameter(0)))
 
 
 
                 #FF_2
                 #fitmask_2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
                 #fitmask_2 = fitmask_2.astype(int)
-                #ptarr_2 = masterArray["pt_4"]
+                ptarr_2 = masterArray["pt_4"]
 
-                #ffweight_2 = ptFun(datadrivenPackage["fakerate2"],ptarr_2)
-                #ffweight_2 = ffweight_2/(1.0000000001 - ffweight_2)
+                ffweight_2 = ptFun(datadrivenPackage["fakerate2"],ptarr_2)
+                ffweight_2 = ffweight_2/(1.0000000001 - ffweight_2)
                 #ffweight_2 = np.ones(len(ffweight_2))*(0.153/(1-0.153))
-                ffweight_2 = np.ones(len(tempmask_2))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1-datadrivenPackage["fitrate2"].GetParameter(0)))
+                #ffweight_2 = np.ones(len(tempmask_2))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1-datadrivenPackage["fitrate2"].GetParameter(0)))
 
 
                 ffweight = -1.0 * ffweight_1 * ffweight_2
@@ -1252,7 +1306,7 @@ def slimskim(process,allcats,weightHistoDict,systematic):
 
 
 
-def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,datadrivenPackage):
+def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,datadrivenPackage,args):
 
     skimArrayPerSysCats={}
     #print "working on systematic ",systematic
@@ -1269,9 +1323,9 @@ def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,data
             nom_names = set(fin["Events"].keys()) - syst_names
             work_dict.update(fin[systematic].arrays(list(syst_names)))
             work_dict.update(fin["Events"].arrays(list(nom_names)))
-            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic))
+            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic,args))
         else:
-            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal"))
+            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal",args))
 
 
         createSlimOutput(skimArrayPerSysCats,massoutputdir)
@@ -1429,6 +1483,7 @@ if __name__ == "__main__":
     parser.add_argument("-dm",  "--datameasure", default=False,action='store_true',  help="Use DataDriven Method measure part")
     parser.add_argument("-dmZH",  "--datameasureZH", default=False,action='store_true',  help="Use DataDriven Method measure part")
     parser.add_argument("-ddZH",  "--datadrivenZH", default=False,action='store_true',  help="Use DataDriven Method")
+    parser.add_argument("-ex",  "--extract", default=False,action='store_true',  help="Additional Cuts for Extraction")
     parser.add_argument("-ff",  "--makeFakeHistos", default=False,action='store_true',  help="Just make fake rate histos")
     parser.add_argument("-v",  "--verbose", default=False,action='store_true',  help="print per event")
     parser.add_argument("-t",  "--test", default=False,action='store_true',  help="only do 1 event to test code")
@@ -1498,7 +1553,7 @@ if __name__ == "__main__":
                 (process,allcats,
                 weightHistoDict,sys,
                 "massOutputDir_"+args.outname,
-                datadrivenPackage))
+                 datadrivenPackage,args))
 
     #print(" PAYLOADS   ",payloads)
 
