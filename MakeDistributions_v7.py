@@ -39,7 +39,7 @@ from utils.Parametrization import *
 
 
 #Setting up operators for cut string iterator
-ops = { "==": operator.eq, "!=": operator.eq, ">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le, "band": operator.and_,"bor":operator.or_}
+ops = { "==": operator.eq, "!=": operator.ne, ">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le, "band": operator.and_,"bor":operator.or_}
 
 
 def subArrayLogic(evt,array):
@@ -524,10 +524,10 @@ def initialize(args):
 
 
     #precise weights for jet multiplicity
-    from utils.Weights import jet_inclusive_samples
+    from utils.Weights import jet_exc_samples
     from utils.Weights import jetIncOnly
     inc_samps = jetIncOnly[args.year]
-    inclusive_samples = jet_inclusive_samples[args.year]
+    jet_exc_samples = jet_exc_samples[args.year]
 
     #file list for easy reading
     for proObj in HAA_processes.keys():
@@ -535,9 +535,9 @@ def initialize(args):
 
     # adding kfactor to relevent samples
     for sample in sampleDict.keys():
-        if sample in inclusive_samples and sample.startswith("DY"):
+        if sample in jet_exc_samples and sample.startswith("DY"):
             HAA_processes[sample].weights.update({"kfactor":1.1637})
-        if sample in inclusive_samples and sample.startswith("W"):
+        if sample in jet_exc_samples and sample.startswith("W"):
             HAA_processes[sample].weights.update({"kfactor":1.221})
 
     weightHistoDict = {}
@@ -571,13 +571,16 @@ def initialize(args):
         except:
             print nickname," hWeights prob doesn't exist?"
 
-    # print weightHistoDict
+    print weightHistoDict
+    #for key in weightHistoDict.keys():
+        #if weightHistoDict[key].Get
     #print weightHistoDict["DYJetsToLLext1"]
     #print weightHistoDict["WJetsToLNu"]
 
 
     jetWeightMultiplicity = {}
     NJetWeights = {}
+    # for all the DYJet and WJet files make sure that the exts are summed PRIOR to makeCutsOnTreeArray
     #print inc_samps
     for inc_group in inc_samps:
         sumOfWeights = np.zeros(5)
@@ -615,10 +618,25 @@ def initialize(args):
     if args.year=="2017":
         DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
         jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
+        DY1JetsFile_ext1 = ROOT.TFile.Open(filelist["DY1JetsToLL_ext1"],"read")
+        jetWeightMultiplicity["DY1JetsToLL_ext1"]=DY1JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+        jetWeightMultiplicity["DY1JetsToLL_ext1"]+=jetWeightMultiplicity["DY1JetsToLL"]
+        jetWeightMultiplicity["DY1JetsToLL"]+=jetWeightMultiplicity["DY1JetsToLL_ext1"]
+
         DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
         jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
+        DY2JetsFile_ext1 = ROOT.TFile.Open(filelist["DY2JetsToLL_ext1"],"read")
+        jetWeightMultiplicity["DY2JetsToLL_ext1"]=DY2JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+        jetWeightMultiplicity["DY2JetsToLL_ext1"]+=jetWeightMultiplicity["DY2JetsToLL"]
+        jetWeightMultiplicity["DY2JetsToLL"]+=jetWeightMultiplicity["DY2JetsToLL_ext1"]
+
         DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
         jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
+        DY3JetsFile_ext1 = ROOT.TFile.Open(filelist["DY3JetsToLL_ext1"],"read")
+        jetWeightMultiplicity["DY3JetsToLL_ext1"]=DY3JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+        jetWeightMultiplicity["DY3JetsToLL_ext1"]+=jetWeightMultiplicity["DY3JetsToLL"]
+        jetWeightMultiplicity["DY3JetsToLL"]+=jetWeightMultiplicity["DY3JetsToLL_ext1"]
+
         DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
         jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
 
@@ -702,7 +720,9 @@ def initialize(args):
         finalDistributions["prompt2"]=["prompt2"]
     if args.datadrivenZH or args.datadrivenSM:
         Bkg = ["FF"]
+        rareBkg = ["DY","W","TT","ST","EWK","Other","rare","WZ"]
         finalDistributions["Bkg"]=Bkg
+        finalDistributions["rareBkg"]=rareBkg
 
     allSkims = {}
     finalSkims ={}
@@ -834,8 +854,9 @@ def initialize(args):
     fakefactorObj= fakefactor()
     if args.datadrivenSM:
         #fakefactorObj = fakefactor("/eos/home-s/shigginb/fakefactor/")
-        fakefactorObj.loadHistograms("/eos/home-s/shigginb/fakefactors/",args.year)
-        fakefactorObj.Print()
+        #fakefactorObj.loadHistograms("/eos/home-s/shigginb/fakefactors/",args.year)
+        fakefactorObj.loadHistograms("./fakefactors/",args.year)
+        #fakefactorObj.Print()
 
     #exit()
     # ROOT.fail
@@ -919,19 +940,19 @@ def createFakeFactorHistos(allcats, inputFFile):
 
 
 
-def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systematic,fakefactorObj,args):
+def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systematic,jetWeightMultiplicity,fakefactorObj,args):
 
     from utils.functions import functs
     from utils.Weights import CommonWeights
-    from utils.Weights import jet_inclusive_samples
+    from utils.Weights import jet_exc_samples
 
-    inclusive_samples = jet_inclusive_samples[args.year]
+    jet_exc_samples = jet_exc_samples[args.year]
 
     from ROOT import gInterpreter
     import copy
     commonweight = CommonWeights["lumi"+args.year][0]
     skimArrayPerCat = {}
-    #print "working on process obj ",processObj.nickname
+    print "working on process obj ",processObj.nickname
 
     for process in processObj.cuts.keys():
         procut = processObj.cuts[process]
@@ -992,6 +1013,11 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 masterArray[var] = functs[allcats[cat].newvariables[var][0]](*tempvals)
 
 
+            plottedVars.append("nickname")
+            masterArray["nickname"]=np.full(len(masterArray['evt']),str(processObj.nickname))
+            masterArray["nickname"]=masterArray["nickname"].astype("S40")
+            #print masterArray["nickname"]
+
             if process=="data_obs":
                 masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
 
@@ -1022,7 +1048,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     continue
 
                 for key in skimArray.keys():
-                    if key not in plottedVars and key != "finalweight":
+                    if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
 
@@ -1141,7 +1167,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     continue
 
                 for key in skimArray.keys():
-                    if key not in plottedVars and key != "finalweight":
+                    if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 #return skimArray
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
@@ -1202,24 +1228,42 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 finalWeight = ffweight_1 + ffweight_2 + ffweight
 
 
-                masterArray["finalweight"] *= finalWeight
+                #masterArray["finalweight"] *= finalWeight
+                print "final weight after ",finalWeight[finalWeight>0]
+                masterArray["finalweight"] = finalWeight
                 #print "summed final weight ",np.sum(finalWeight)
 
-                keepEvents = ~np.where(finalWeight==0.0)[0]
+                #keepEvents = np.where(finalWeight!=0)
+
+                #keepEvents = cutOnArray(masterArray,[["OR"],["finalweight",">",0],["finalweight","<",0]])
+                #keepEvents = cutOnArray(masterArray,[["finalweight","!=",0]])
+                #print "keep events ",keepEvents[:len(keepEvents)]
+                #skipEvents = np.where(mask==0)[0]
+                mask = cutOnArray(masterArray,[["finalweight","!=",0.]])
+                masterArray["mask"]=mask
+                print mask[:1000]
 
                 skimArray={}
                 for key in masterArray.keys():
-                    skimArray[key] = masterArray[key][keepEvents]
+                    #skimArray[key] = masterArray[key][keepEvents]
+                    #skimArray[key] = masterArray[key][keepEvents]
+                    skimArray[key] = masterArray[key][mask]
+                    #skimArray[key] = masterArray[key][finalWeight>0]
 
                 #print("after skim", len(skimArray["mll"]), processObj.file)
+                print "final weight after removing o's  \n",masterArray["finalweight"]
+                print "final weight after removing o's  \n",skimArray["finalweight"]
+                print "final weight specfiic after removing o's  \n",skimArray["finalweight"]
                 if len(skimArray["mll"])==0:
                     continue
 
                 for key in skimArray.keys():
-                    if key not in plottedVars and key != "finalweight":
+                    if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 #return skimArray
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
+                print "done with SM FF"
+
 
 
 
@@ -1252,7 +1296,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
                 #print "finalweight after PU and kFactor ",masterArray["finalweight"][:100]
 
-                if nickname in inclusive_samples:
+                if nickname in jet_exc_samples:
                     jetweights = 5*[0]
                     if nickname.startswith("DY"):
                         jet0Xsec = 4673.65
@@ -1264,10 +1308,11 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                                 norm2 = jetWeightMultiplicity[njname]
                                 jetweights[nj] = float(weightDict["kfactor"])*HAA_processes[njname].weights["xsec"] / (norm1 + norm2)
                         elif args.year=="2017":
-                            jetweights[0] = jet0Xsec/jetWeightMultiplicity["DYJetsToLL_ext1"][0]
+                            jetweights[0] = jet0Xsec/jetWeightMultiplicity["DYJetsToLL"][0]
                             for nj in range(1, 5):
                                 njname = "DY%dJetsToLL"%nj
-                                norm1 = jetWeightMultiplicity["DYJetsToLL_ext1"][nj]
+                                #norm1 = jetWeightMultiplicity["DYJetsToLL_ext1"][nj]
+                                norm1 = jetWeightMultiplicity["DYJetsToLL"][nj]
                                 norm2 = jetWeightMultiplicity[njname]
                                 jetweights[nj] = float(weightDict["kfactor"])*HAA_processes[njname].weights["xsec"] / (norm1 + norm2)
                         elif args.year=="2018":
@@ -1294,21 +1339,31 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                         masterArray["finalweight"] [njetmask] *= weight
                         #print "events that pass ",i_jet," jets ",np.count_nonzero(masterArray["finalweight"] [njetmask])
 
-                    #print "jet weight array ",jetweights
+                    print "jet weight array ",jetweights
                     #print  " sample name ",nickname,"xsec ",HAA_processes[nickname].weights["xsec"]," events that pass ", np.count_nonzero(masterArray["finalweight"])
-
-
                 elif not type(weightHistoDict[nickname])==list:
                 #else: #Will the run separate from the NJet cases?
                     sumOfWeights = 0.0
+
                     for nic,sowhist in weightHistoDict.iteritems():
-                        if nickname in nic:
-                            sumOfWeights += sowhist.GetSumOfWeights()
+                        extensions = ["_ext1", "_ext2", "_ext3", "ext1", "ext2"]
+                        for ext in extensions:
+                         #sum sow from all versions of this process.
+                            if nickname.replace(ext,"") in nic or nic.replace(ext,"") in nickname:
+                                print "adding ",nickname,"   to   ",nic
+                                sumOfWeights += sowhist.GetSumOfWeights()
+                                break
+
+                    # for nic,sowhist in weightHistoDict.iteritems():
+                    #     if nickname in nic:
+                    #         sumOfWeights += sowhist.GetSumOfWeights()
+
                     if sumOfWeights != 0.0:
                         weightfinal = weightfinal * HAA_processes[nickname].weights["xsec"]/ sumOfWeights
-                        #print "xsec/SoW ",HAA_processes[nickname].weights["xsec"]/ sumOfWeights
+                        print "nickname ",nickname," xsec/SoW ",HAA_processes[nickname].weights["xsec"]/ sumOfWeights
 
                 masterArray["finalweight"] *= weightfinal
+
                 #print  " sample name ",nickname,"xsec ",HAA_processes[nickname].weights["xsec"]," SoW ",sumOfWeights," events that pass ", np.count_nonzero(masterArray["finalweight"])
 
                 #multiply by scalar weight
@@ -1337,39 +1392,35 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
                         if scalefactor!="fake" and scalefactor!="fake1" and scalefactor!="fake2":
                             weightMask[np.where(weightMask==0.0)]=1.0
+
                         #else:
                             #print "subtracting fakes "
                             #print weightMask[:100]
 
                         masterArray["finalweight"] *= weightMask
+                        if len(np.where(masterArray["finalweight"]>=40000.0)[0])>0:
+                            print "offending weights ",max(weightMask)
                 #print "finalweight after per event scaling ",masterArray["finalweight"][:100]
                 #print "summed final weight ",np.sum(masterArray["finalweight"])
                 #print " scalar weightfinal ",weightfinal
+                #if len(np.where(masterArray["evt"]==161352765)[0])>0:
+                if 161352765 in masterArray["evt"]:
+                     print "final weight weird ",systematic+":"+cat+":"+processObj.nickname+":"+process
+                     print "event ",masterArray["evt"][np.where(masterArray["evt"]==161352765)[0]]
 
                 #print("before skim", len(masterArray["finalweight"]))
                 for key,value in masterArray.iteritems():
-                    if ( key in plottedVars or key == "finalweight" ) \
+                    if ( key in plottedVars or key == "finalweight" or key=="evt") \
                         and (len(mask)==len(value)):
                         skimArray[key] = value[mask]
-                #for key in masterArray.keys():
-                    #try:
-                        #skimArray[key] = masterArray[key][mask]
-                    #    skimArray[key] = value[mask]
-                    #except:
-                        #print "length problem? length of key in master ",len(masterArray[key])," length of mask ",len(mask)
-                        #print "skipping branch ",key
-                    #    continue
-                #print("after skim", len(skimArray["mll"]), processObj.file)
-                #for key in skimArray.keys():
-                #    if key not in plottedVars and key != "finalweight":
-                #        del skimArray[key]
 
-                #catching events with strange weights... like just lumi ?? strange.
-                #skimArray["finalweight"][np.where(skimArray["finalweight"]>2.0)]=0.0
-                #skimArray["finalweight"][np.where(skimArray["finalweight"]>=100.0)]=0.0
-                #skimArray["finalweight"][np.where(skimArray["finalweight"]<-100.0)]=0.0
-                skimArray["finalweight"][np.where(skimArray["finalweight"]>=50.0)]=0.0
-                skimArray["finalweight"][np.where(skimArray["finalweight"]<-50.0)]=0.0
+
+                # del1 = np.where(skimArray["finalweight"]<-30000.0)
+                # del2 = np.where(skimArray["finalweight"]>30000.0)
+                # for branch in skimArray.keys():
+                #     skimArray[branch]=np.delete(skimArray[branch],del1)
+                #     skimArray[branch]=np.delete(skimArray[branch],del2)
+
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
     #exit()
     return skimArrayPerCat
@@ -1405,7 +1456,7 @@ def slimskim(process,allcats,weightHistoDict,systematic):
 
 
 
-def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,datadrivenPackage,fakefactorObj,args):
+def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args):
 
     skimArrayPerSysCats={}
     #print "working on systematic ",systematic
@@ -1422,9 +1473,9 @@ def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,data
             nom_names = set(fin["Events"].keys()) - syst_names
             work_dict.update(fin[systematic].arrays(list(syst_names)))
             work_dict.update(fin["Events"].arrays(list(nom_names)))
-            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic,fakefactorObj,args))
+            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic,jetWeightMultiplicity,fakefactorObj,args))
         else:
-            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal",fakefactorObj,args))
+            skimArrayPerSysCats.update(makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal",jetWeightMultiplicity,fakefactorObj,args))
 
 
         createSlimOutput(skimArrayPerSysCats,massoutputdir)
@@ -1444,8 +1495,12 @@ def createSlimOutput(skimArrayPerSysCats,outputdir):
    for key,dictionary in skimArrayPerSysCats.iteritems():
       dataTypes =[[],[]]
       for branch in dictionary.keys():
+          if branch=="nickname":
+              print branch
+              print dictionary[branch].dtype
           dataTypes[0].append(branch)
           dataTypes[1].append(dictionary[branch].dtype)
+
 
       data = np.zeros(len(dictionary[branch]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
 
@@ -1477,6 +1532,7 @@ def combineRootFiles(systematics, allcats, processes,
    import os
    import glob
    import uproot
+   import awkward as ak
    rootFiles = {}
    #print "the final distributions ",finalDistributions
    #cat = "mmmt_inclusive"
@@ -1511,6 +1567,10 @@ def combineRootFiles(systematics, allcats, processes,
                         with uproot.open(globfile) as fin:
                             tree = fin[sys+"_"+cat+"_"+nickname+"_"+process]
                             mainArrays = tree.arrays()
+                            # mainArrays={}
+                            # for branch,data in tree.iteritems():
+                            #     mainArrays[branch]=data.array(library="np")
+                            #mainArrays["nickname"]=mainArrays["nickname"].array(library="np")
                             #print "tree ",sys+"_"+process," entries ",len(mainArrays["mll"])
                             for catDist, final in finalDistributions.iteritems():
                                 for processOut in final:
@@ -1521,6 +1581,13 @@ def combineRootFiles(systematics, allcats, processes,
                                     elif (processOut==process) and (catDist in finalSkims[sys][cat]):
                                         #print "adding to finalskims ", catDist,"  for process ",process," finalDist cat ",catDist
                                         for branch in finalSkims[sys][cat][catDist].keys():
+                                            if branch=="nickname":
+                                                #print "changing nickname branch  "
+                                                # print "nickname branch first ele ",finalSkims[sys][cat][catDist][branch][0]
+                                                # print "nickname branch whole     ",finalSkims[sys][cat][catDist][branch]
+                                                finalSkims[sys][cat][catDist][branch]=finalSkims[sys][cat][catDist][branch].astype("S40")
+                                            #if finalSkims[sys][cat][catDist][branch].dtype == object:
+                                            #    finalSkims[sys][cat][catDist][branch].astype('S')
                                             try:
                                                 finalSkims[sys][cat][catDist][branch]=np.concatenate((finalSkims[sys][cat][catDist][branch],mainArrays[branch]))
                                             except:
@@ -1528,7 +1595,7 @@ def combineRootFiles(systematics, allcats, processes,
                                     else:
                                         continue
 
-   #print "final skims example ", finalSkims["Nominal"]["mmtt_inclusive"]["irBkg"]
+   #print "final skims example ", finalSkims["Nominal"]["mmtt_inclusive"]["rareBkg"]
    skimFile = ROOT.TFile("skimmed_"+outputstring+".root","recreate")
    skimFile.cd()
    for cat, catObj in allcats.iteritems():
@@ -1543,8 +1610,14 @@ def combineRootFiles(systematics, allcats, processes,
            #print "combining ",sys, " cat ",cat
            random_sample = finalSkims[sys][cat].values()[0]
            for branch in random_sample.keys():
+               #print branch
+               #print random_sample[branch].dtype
+               if branch=="nickname":
+                   branchdatatype = "S40"
+               else:
+                   branchdatatype = random_sample[branch].dtype
                dataTypes[0].append(branch)
-               dataTypes[1].append(random_sample[branch].dtype)
+               dataTypes[1].append(branchdatatype)
            for catDist in finalSkims[sys][cat].keys():
                #print "on the final dist ",catDist
                data = np.zeros(len(finalSkims[sys][cat][catDist][branch]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
@@ -1574,7 +1647,7 @@ if __name__ == "__main__":
 
     #trial of global settings
     #import AnalysisSetup as AS
-    from utils.Weights import jet_inclusive_samples
+    from utils.Weights import jet_exc_samples
 
 
     import argparse
@@ -1640,7 +1713,7 @@ if __name__ == "__main__":
         systematics =[ "Events"]
     #systematics =[ "Events"]
 
-    inclusive_samples = jet_inclusive_samples[args.year]
+    jet_exc_samples = jet_exc_samples[args.year]
 
 
     if not args.combine:
@@ -1650,7 +1723,7 @@ if __name__ == "__main__":
                     (process,allcats,
                     weightHistoDict,sys,
                     "massOutputDir_"+args.outname,
-                     datadrivenPackage,fakefactorObj,args))
+                     datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
 
         #print(" PAYLOADS   ",payloads)
 

@@ -206,8 +206,6 @@ if __name__ == "__main__":
     allcats={}
 
     for category in categories:
-        #print category
-        #print categories[category]['name']
         tempcat = Category()
         tempcat.name=categories[category]['name']
         tempcat.cuts=categories[category]['cuts']
@@ -215,7 +213,7 @@ if __name__ == "__main__":
         tempcat.vars=categories[category]['vars']
         allcats[tempcat.name]=tempcat
 
-    print "the categories   ",allcats
+    print "working on categories ",allcats
     newvars=[]
     variabledic={}
 
@@ -227,7 +225,6 @@ if __name__ == "__main__":
         variables.append([varHandle])
         variabledic[varHandle]=allcats[args.channel+"_inclusive"].vars[varHandle]
     #variables = variables + newvars
-    #print variables
 
     #The skimmed root file containing all the TTrees
     #file = ROOT.TFile(args.input,"read")
@@ -244,13 +241,11 @@ if __name__ == "__main__":
     passvars = []
 
     for cat in allcats.keys():
-        print "working on cat",cat
         #cat = cat
         vars[cat]={}
         for variableHandle in allcats[cat].vars.keys():
             variable = allcats[cat].vars[variableHandle][0]
             if "[" in variable:
-                #print "adding jagged variable to array ",variable
                 basevar = variable.split("[")[0]
                 index = int(variable.split("[")[1].split("]")[0])
                 #val = masterArray[basevar][:,index]
@@ -271,6 +266,7 @@ if __name__ == "__main__":
         systematics = ["Nominal"]
         #systematics =[ "Nominal","scale_eUp","scale_eDown","scale_m_etalt1p2Up","scale_m_etalt1p2Down","scale_m_eta1p2to2p1Up","scale_m_eta1p2to2p1Down","scale_m_etagt2p1Up","scale_m_etagt2p1Down","scale_t_1prongUp","scale_t_1prongDown","scale_t_1prong1pizeroUp","scale_t_1prong1pizeroDown","scale_t_3prongUp","scale_t_3prongDown","scale_t_3prong1pizeroUp","scale_t_3prong1pizeroDown"]
     for cat in allcats.keys():
+        print "working on cat ",cat
         histodict[cat]={}
         for sys in systematics:
             histodict[cat][sys]={}
@@ -284,7 +280,6 @@ if __name__ == "__main__":
                 #for cat in cats:
                 #histodict[cat][sys][dist][cat]={}
                 for variableHandle,nobrackets in vars[cat].iteritems():
-                    print variableHandle,nobrackets
                     if variableHandle in allcats[cat].newvariables.keys():
                         var = variableHandle
                         bins = allcats[cat].newvariables[variableHandle][1]
@@ -311,8 +306,9 @@ if __name__ == "__main__":
                             root_numpy.fill_hist(histodict[cat][sys][dist][variableHandle],val,masterArray["finalweight"])
                             passvars.append(var)
                         except:
-                            print "problem with variable so skipping ",var
-                            continue
+                            print "problem with var",var
+                            pass
+                            #continue
                     else:
                         tmpbin = np.asarray(bins)
                         histodict[cat][sys][dist][variableHandle] = ROOT.TH1D(str(dist),str(dist),len(tmpbin)-1,tmpbin)
@@ -324,15 +320,15 @@ if __name__ == "__main__":
                             root_numpy.fill_hist(histodict[cat][sys][dist][variableHandle],val,masterArray["finalweight"])
                             passvars.append(var)
                         except:
-                            print "problem with variable so skipping ",var
-                            continue
+                            print "problem with var",var
+                            pass
+                            #continue
                     #histodict[cat][sys][variablehandle+":"+allcats[cat].name+":"+dist] = root.TH1D(str(process),str(process),bins[0][0],bins[0][1],bins[0][2])
                         #root_numpy.fill_hist(histodict[variablehandle+":"+allcats[cat].name+":"+dist],val,masterArray["finalweight"])
 
 
 
     #for varCatDist in histodict.keys():
-    print "histodict keys",histodict.keys()
 
 
     #var is now the variable handle
@@ -341,7 +337,8 @@ if __name__ == "__main__":
             try:
                 os.mkdir("outplots_"+args.output+"_"+sys)
             except:
-                print "dir prob exists"
+                print "directory exists"
+                pass
 
             #for var in passvars:
             for var,nobrackets in vars[cat].iteritems():
@@ -357,7 +354,6 @@ if __name__ == "__main__":
                     #    continue
 
                 #signal
-                print "sys ",sys," dist ",dist,"  cat  ",cat,"  var ",var
                 if not (histodict[cat][sys][sys+"_"+"a40"][var]): continue
                 hSignal = histodict[cat][sys][sys+"_"+"a40"][var]
                 hSignals={}
@@ -367,7 +363,6 @@ if __name__ == "__main__":
                 hMCFake1Dict={}
                 hMCFake2Dict={}
 
-                #print "divising MC into categories "
                 hBackground = ROOT.TH1F()
                 hirBackground = ROOT.TH1F()
                 hrareBackground = ROOT.TH1F()
@@ -409,7 +404,11 @@ if __name__ == "__main__":
                 hBkgTot.Add(h3alphBackground)
 
                 if args.datadrivenZH:
-                    hData = histodict[cat][sys][sys+"_data_obs"][var]
+                    try:
+                        hData = histodict[cat][sys][sys+"_data_obs"][var]
+                    except:
+                        hData = histodict[cat][sys][sys+"_Bkg"][var]
+
                     #hPrompt = histodict[cat][sys]["prompt"][var]
                     #hFake1 = histodict[cat][sys]["fake1")
                     #hFake2 = histodict[cat][sys]["fake2")
@@ -427,7 +426,11 @@ if __name__ == "__main__":
                     hFF.SetFillColor(ROOT.TColor.GetColor("#CF8AC8"))
 
                 if not args.mc:
-                    hData = histodict[cat][sys][sys+"_data_obs"][var].Clone()
+                    #hData = histodict[cat][sys][sys+"_data_obs"][var].Clone()
+                    try:
+                        hData = histodict[cat][sys][sys+"_data_obs"][var].Clone()
+                    except:
+                        hData = histodict[cat][sys][sys+"_Bkg"][var].Clone()
                     dataMax = hData.GetMaximum()*1.35
                     dataMin = hData.GetMinimum()*1.25
                     if var in ["mll_fine"]:

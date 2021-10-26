@@ -16,39 +16,50 @@ CommonWeights={}
 CommonWeights["lumi2018"]=[59740]
 CommonWeights["lumi2016"]=[35900]#pb^-1
 CommonWeights["lumi2017"]=[41800]#pb^-1
-#CommonWeights["lumi"]=["1"]#pb^-1
-#CommonWeights["mcweight"]=["__WEIGHT__*GENWEIGHT*puweight"]
-#CommonWeights["mcweight"]=["LHEweight*weight"]
-CommonWeights["string"]=[["Generator_weight"],["weight"]]
 
-jet_inclusive_samples = {}
+jet_exc_samples = {}
 
-jet_inclusive_samples["2018"] = [
+jet_exc_samples["2018"] = [
+                        "DYJetsToLL",
+                        "DYJetsToLLM10to50_ext1",
+                        "DYJetsToLLM10to50",
                         "DY1JetsToLL" ,
                         "DY2JetsToLL" ,
                         "DY3JetsToLL" ,
                         "DY4JetsToLL" ,
                         "WJetsToLNu" ,
                         "W1JetsToLNu" ,
+                        "W2JetsToLNu" ,
                         "W3JetsToLNu",
+                        "W4JetsToLNu",
                         ]
 
-jet_inclusive_samples["2017"] = ["DYJetsToLL_ext1",
+jet_exc_samples["2017"] = [
+                        "DYJetsToLL_ext1",
+                        "DYJetsToLL",
+                        "DYJetsToLLM10to50_ext1",
+                        "DYJetsToLLM10to50",
                         "DY1JetsToLL" ,
+                        "DY1JetsToLL_ext1" ,
                         "DY2JetsToLL" ,
+                        "DY2JetsToLL_ext1" ,
                         "DY3JetsToLL" ,
+                        "DY3JetsToLL_ext1" ,
                         "DY4JetsToLL" ,
-                        "WJetsToLNu" ,
+                        #"WJetsToLNu" ,
                         "WJetsToLNu_ext1" ,
                         "W1JetsToLNu" ,
                         #"W2JetsToLNu_ext1" ,
+                        "W2JetsToLNu",
                         "W3JetsToLNu",
+                        "W4JetsToLNu"
                         #"W4JetsToLNu_ext1",
                         #"W4JetsToLNu_ext2"
                         ]
 
-jet_inclusive_samples["2016"] = ["DYJetsToLLext1",
+jet_exc_samples["2016"] = ["DYJetsToLLext1",
                         "DYJetsToLLext2" ,
+                        "DYJetsToLLM10to50" ,
                         "DY1JetsToLL" ,
                         "DY2JetsToLL" ,
                         "DY3JetsToLL" ,
@@ -64,7 +75,7 @@ jet_inclusive_samples["2016"] = ["DYJetsToLLext1",
                         "W4JetsToLNu_ext2"
                         ]
 
-# jet_inclusive_samples["2016"] = ["DYJetsToLLext1",    #v6
+# jet_exc_samples["2016"] = ["DYJetsToLLext1",    #v6
 #                         "DYJetsToLLext2" ,
 #                         "DY1JetsToLL" ,
 #                         "DY2JetsToLL" ,
@@ -81,7 +92,9 @@ jet_inclusive_samples["2016"] = ["DYJetsToLLext1",
 #                         ]
 jetIncOnly = {}
 jetIncOnly["2018"] = [["DYJetsToLL"],["WJetsToLNu"]]
-jetIncOnly["2017"] = [["DYJetsToLL_ext1"],["WJetsToLNu","WJetsToLNu_ext1"]]
+#jetIncOnly["2017"] = [["DYJetsToLL","DYJetsToLL_ext1"],["WJetsToLNu","WJetsToLNu_ext1"]]
+jetIncOnly["2017"] = [["DYJetsToLL","DYJetsToLL_ext1","DYJetsToLLM10to50","DYJetsToLLM10to50_ext1"],["WJetsToLNu","WJetsToLNu_ext1"]]
+#jetIncOnly["2017"] = [["DYJetsToLL"],["WJetsToLNu"]]
 #jetIncOnly["2016"] = [["DYJetsToLLext1","DYJetsToLLext2"],["WJetsToLNu","WJetsToLNuext","WJetsToLNu_ext2"]] #v6
 jetIncOnly["2016"] = [["DYJetsToLLext1","DYJetsToLLext2"],["WJetsToLNu","WJetsToLNu_ext2"]]
 
