@@ -1349,7 +1349,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                         extensions = ["_ext1", "_ext2", "_ext3", "ext1", "ext2"]
                         for ext in extensions:
                          #sum sow from all versions of this process.
-                            if nickname.replace(ext,"") in nic or nic.replace(ext,"") in nickname:
+                            if nickname.replace(ext,"")==nic or nic.replace(ext,"")==nickname:
                                 print "adding ",nickname,"   to   ",nic
                                 sumOfWeights += sowhist.GetSumOfWeights()
                                 break

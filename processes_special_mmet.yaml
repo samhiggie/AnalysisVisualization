@@ -35,6 +35,7 @@ FF:
         ["muonTriggerWord","band",2048],
         ["muonTriggerWord","band",4096]],
     ["iso_3",">",0.15],
+    #["iso_3",">",0.20],
     ["Electron_mvaFall17V2noIso_WP90_3","<",1], #must fail specifically
     ["idDeepTau2017v2p1VSjet_4",">=",*ffworkingpoint],
     ["idDeepTau2017v2p1VSe_4",">=",*ffworkingpoint],
@@ -62,7 +63,8 @@ FF:
         ["muonTriggerWord","band",1024],
         ["muonTriggerWord","band",2048],
         ["muonTriggerWord","band",4096]],
-    ["iso_3","<=",0.20],
+    ["iso_3","<=",0.15],
+    #["iso_3","<=",0.20],
     ["Electron_mvaFall17V2noIso_WP90_3",">=",1],
     [["OR"],["idDeepTau2017v2p1VSjet_4","<",*ffworkingpoint],
     ["idDeepTau2017v2p1VSe_4","<",*ffworkingpoint],
@@ -91,6 +93,7 @@ FF:
         ["muonTriggerWord","band",2048],
         ["muonTriggerWord","band",4096]],
     ["iso_3",">",0.15],
+    #["iso_3",">",0.20],
     ["Electron_mvaFall17V2noIso_WP90_3","<",1], #must fail specifically
     [["OR"],["idDeepTau2017v2p1VSjet_4","<",*ffworkingpoint],
     ["idDeepTau2017v2p1VSe_4","<",*ffworkingpoint],

@@ -182,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("-ddZH",  "--datadrivenZH", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-mc",  "--mc", default=False,action='store_true',  help="Use only mc skip data")
     parser.add_argument("-mhs",  "--mhs", default=False,action='store_true',  help="make file containing histograms for datacards")
+    parser.add_argument("-drawbox",  "--drawbox", default=False,action='store_true',  help="draw blind box")
     parser.add_argument("-fh",  "--fh", default=False,action='store_true',  help="Make Finalized histograms")
     parser.add_argument("-de",  "--drawerror", default=False,action='store_true',  help="Draw Error Bars")
     parser.add_argument("-ss",  "--signalScale", default=1.0,  help="Scale the Signal")
@@ -194,7 +195,7 @@ if __name__ == "__main__":
 
 
 
-
+    nodatavars = ["mll_m40","mll","mll_fine","mll_fit","mll_fit0","mll_fit1","mll_fit2","mll_fit3"]
     #importing analysis categories and conventions
     with io.open(args.categories,'r') as catsyam:
         categories = yaml.load(catsyam)
@@ -433,12 +434,6 @@ if __name__ == "__main__":
                         hData = histodict[cat][sys][sys+"_Bkg"][var].Clone()
                     dataMax = hData.GetMaximum()*1.35
                     dataMin = hData.GetMinimum()*1.25
-                    if var in ["mll_fine"]:
-                        hData.SetBinContent(7,-999)
-                        hData.SetBinContent(8,-999)
-                        hData.SetBinContent(9,-999)
-                        hData.SetBinContent(10,-999)
-                        hData.SetBinContent(11,-999)
                     if var in ["mll"]:
                         hData.SetBinContent(3,-999)
                         hData.SetBinContent(4,-999)
@@ -453,6 +448,7 @@ if __name__ == "__main__":
                         hData.SetBinContent(5,-999)
                         hData.SetBinContent(6,-999)
                         hData.SetBinContent(7,-999)
+
 
 
 
@@ -512,6 +508,7 @@ if __name__ == "__main__":
                 pad1 = ROOT.TPad("pad1","pad1",0.0016,0.291,1.0,1.0)
                 #pad2 = ROOT.TPad("pad2","pad2",0.45,0.35,0.92,0.95)
 
+                if var in nodatavars: doRatio = False
                 xR=0.65
                 if(doRatio):
                     L = 0.16*W_ref
@@ -544,6 +541,14 @@ if __name__ == "__main__":
                     l.AddEntry(h3alphBackground)
                     l.AddEntry(hirBackground)
                     l.AddEntry(hrareBackground)
+
+                    if var in ["AMass"] and args.drawbox:
+                        #TBox (Double_t x1, Double_t y1, Double_t x2, Double_t y2)
+                        box = ROOT.TBox(L,L*0.375,T/H,B_ratio/H)
+                        box.SetFillColorAlpha(9, 0.571)
+                        box.SetLineColorAlpha(8, 0.464)
+                        box.SetLineWidth(0)
+                        box.Draw()
 
                 else:
                     L = 0.13*W_ref
@@ -585,13 +590,14 @@ if __name__ == "__main__":
                     hData.GetXaxis().SetTitle(variabledic[var][3]+variabledic[var][2])
                     hData.GetYaxis().SetTitle("Events")
                     hData.GetYaxis().SetRangeUser(dataMin,dataMax)
-                    if var in ["mll_m40","mll","mll_fine","mll_fit0","mll_fit1","mll_fit2","mll_fit3"]:
+                    if var in nodatavars:
                         if(hBkgTot.GetMaximum() > hSignal.GetMaximum()):
                             hBkgTot.Draw("HIST")
                             hBkgTot.SetTitle("")
                             hBkgTot.GetXaxis().SetTitle(str(variabledic[var][3])+str(variabledic[var][2]))
                             hBkgTot.GetYaxis().SetTitle("Events")
-                            hSignal.Draw("HIST same axis")
+                            #hSignal.Draw("HIST same axis")
+                            hSignal.Draw("HIST same")
                             if args.drawerror: hbkg.Draw("same E2")
                         else:
                             hSignal.Draw("HIST")
@@ -649,7 +655,7 @@ if __name__ == "__main__":
                         hData2.GetYaxis().SetRangeUser(0.3,2.2)
                         hData2.GetYaxis().SetNdivisions(305)
                         hData2.GetYaxis().SetTitle("Obs/Exp   ")
-                        if var in ["mll_m40","mll","mll_fine","mll_fit0","mll_fit1","mll_fit2","mll_fit3"]:
+                        if var in nodatavars:
                             hSignal2=hSignal.Clone()
                             #hSignal2.Divide(hbkgr)
                             #hSignal2.SetMarkerStyle(20)
@@ -711,7 +717,7 @@ if __name__ == "__main__":
                         fileout.write("background entries "+str(hbkg.Integral(0,nbins+1))+"\n")
 
                 if args.mhs:
-                    if var in ["mll_m40","mll","mll_fine","mll_fit0","mll_fit1","mll_fit2","mll_fit3"]:
+                    if var in nodatavars:
                         histoout = ROOT.TFile.Open("final_"+str(cat)+"_"+str(var)+".root","recreate")
                         histoout.mkdir(str(cat))
                         histoout.cd(str(cat))
@@ -729,6 +735,8 @@ if __name__ == "__main__":
 
                 c.SaveAs("outplots_"+args.output+"_"+sys+"/"+var+"_"+str(cat)+".png")
 
+                pad1.Delete()
+                if bool(pad2): pad2.Delete()
                 hBackground.Delete()
                 hirBackground.Delete()
                 h3alphBackground.Delete()
