@@ -201,6 +201,14 @@ def getEventWeightDicitonary(year):
             # "4_electronSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolVL),["eta_4","gen_match_4"]]],
             # "3_electronSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolVL),["eta_3","gen_match_3"]]],
             # "4_electronSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolVL),["eta_4","gen_match_4"]]]
+            "1_lowmu_bar":[[["pt_1",">",5],["pt_1","<",9],["eta_1","<",1.479]],       [0.956]],#taken from AN-2017 173
+            "1_lowmu_end":[[["pt_1",">",5],["pt_1","<",9],["eta_1",">",1.479]],       [0.930]],
+            "1_midmu_bar":[[["pt_1",">",9],["pt_1","<",10],["eta_1","<",1.479]],       [0.916]],
+            "1_midmu_end":[[["pt_1",">",9],["pt_1","<",10],["eta_1",">",1.479]],       [0.897]],
+            "2_lowmu_bar":[[["pt_2",">",5],["pt_2","<",9],["eta_2","<",1.479]],       [0.956]],#taken from AN-2017 173
+            "2_lowmu_end":[[["pt_2",">",5],["pt_2","<",9],["eta_2",">",1.479]],       [0.930]],
+            "2_midmu_bar":[[["pt_2",">",9],["pt_2","<",10],["eta_2","<",1.479]],       [0.916]],
+            "2_midmu_end":[[["pt_2",">",9],["pt_2","<",10],["eta_2",">",1.479]],       [0.897]],
 
             "3_muonSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(antiMuSFToolT),["eta_3","gen_match_3"]]],
             "4_muonSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(antiMuSFToolT),["eta_4","gen_match_4"]]],
@@ -304,8 +312,6 @@ def initialize(args):
     from copy import copy
     import yaml
 
-    #Structure for mapping between root files and processes
-    from utils.ProcessCuts import HAA_ProCuts
 
     #Structure for mapping between processes and weights
     from utils.Weights import CommonWeights
@@ -407,7 +413,7 @@ def initialize(args):
 
     #HAA_process = {name: Process(dir, name, info) for name, info in sampleDict.items()}
     #weightHistoDict = {}
-
+    nevents = 250000
 
     if not (args.datadrivenZH or args.datadrivenSM):
         for sample in sampleDict.keys():
@@ -419,11 +425,15 @@ def initialize(args):
             temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
             temppro.cuts={sampleDict[sample][0]:""}
             if "ggTo2mu2tau" in sample:
+                if args.year==2016: nevents = 250000
+                if args.year==2017: nevents = 350000
+                if args.year==2017: nevents = 500000
                 if args.extract:
-                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
 
                 else:
-                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
                 #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001* 5.0)} # SM Higgs xsec x BR Haa  for signal extraction data MC control plots(AN 17029)
             HAA_processes[temppro.nickname]=temppro
@@ -456,12 +466,16 @@ def initialize(args):
                             ]]
             temppro.cuts={sampleDict[sample][0]:truetau} #ONLY SELECT PRMOPT FOR MC!
             if "ggTo2mu2tau" in sample:
+                if args.year==2016: nevents = 250000
+                if args.year==2017: nevents = 350000
+                if args.year==2017: nevents = 500000
                 #for visualization!
                 if args.extract:
-                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
+                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
+                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
 
                 else:
-                    temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
             HAA_processes[temppro.nickname]=temppro
 
     if (args.datameasureZH):
@@ -973,8 +987,12 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 cuts.append(["AMass","<=",120.0])
                 cuts.append(["mll-mtt",">",0.0])
             elif args.extract and args.channel=="mmtt":
-                cuts.append(["AMass","<=",130.0])
-                cuts.append(["mll-mtt",">",0.0])
+                if args.year=="2016":
+                    cuts.append(["AMass","<=",135.0])
+                    cuts.append(["mll-mtt",">",0.0])
+                else:
+                    cuts.append(["AMass","<=",130.0])
+                    cuts.append(["mll-mtt",">",0.0])
             elif args.extract and args.channel=="mmet":
                 cuts.append(["AMass","<=",120.0])
                 cuts.append(["mll-mtt",">",0.0])
@@ -1073,12 +1091,20 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     cuts_12.append(["AMass","<=",120.0])
                     cuts_12.append(["mll-mtt",">",0.0])
                 if args.extract and args.channel=="mmtt":
-                    cuts_1.append(["AMass","<=",130.0])
-                    cuts_1.append(["mll-mtt",">",0.0])
-                    cuts_2.append(["AMass","<=",130.0])
-                    cuts_2.append(["mll-mtt",">",0.0])
-                    cuts_12.append(["AMass","<=",130.0])
-                    cuts_12.append(["mll-mtt",">",0.0])
+                    if args.year=="2016":
+                        cuts_1.append(["AMass","<=",135.0])
+                        cuts_1.append(["mll-mtt",">",0.0])
+                        cuts_2.append(["AMass","<=",135.0])
+                        cuts_2.append(["mll-mtt",">",0.0])
+                        cuts_12.append(["AMass","<=",135.0])
+                        cuts_12.append(["mll-mtt",">",0.0])
+                    else:
+                        cuts_1.append(["AMass","<=",130.0])
+                        cuts_1.append(["mll-mtt",">",0.0])
+                        cuts_2.append(["AMass","<=",130.0])
+                        cuts_2.append(["mll-mtt",">",0.0])
+                        cuts_12.append(["AMass","<=",130.0])
+                        cuts_12.append(["mll-mtt",">",0.0])
                 if args.extract and args.channel=="mmem":
                     cuts_1.append(["AMass","<=",110.0])
                     cuts_1.append(["mll-mtt",">",0.0])
@@ -1187,12 +1213,20 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     cuts_12.append(["AMass","<=",120.0])
                     cuts_12.append(["mll-mtt",">",0.0])
                 if args.extract and args.channel=="mmtt":
-                    cuts_1.append(["AMass","<=",130.0])
-                    cuts_1.append(["mll-mtt",">",0.0])
-                    cuts_2.append(["AMass","<=",130.0])
-                    cuts_2.append(["mll-mtt",">",0.0])
-                    cuts_12.append(["AMass","<=",130.0])
-                    cuts_12.append(["mll-mtt",">",0.0])
+                    if args.year=="2016":
+                        cuts_1.append(["AMass","<=",135.0])
+                        cuts_1.append(["mll-mtt",">",0.0])
+                        cuts_2.append(["AMass","<=",135.0])
+                        cuts_2.append(["mll-mtt",">",0.0])
+                        cuts_12.append(["AMass","<=",135.0])
+                        cuts_12.append(["mll-mtt",">",0.0])
+                    else:
+                        cuts_1.append(["AMass","<=",130.0])
+                        cuts_1.append(["mll-mtt",">",0.0])
+                        cuts_2.append(["AMass","<=",130.0])
+                        cuts_2.append(["mll-mtt",">",0.0])
+                        cuts_12.append(["AMass","<=",130.0])
+                        cuts_12.append(["mll-mtt",">",0.0])
                 if args.extract and args.channel=="mmem":
                     cuts_1.append(["AMass","<=",110.0])
                     cuts_1.append(["mll-mtt",">",0.0])
