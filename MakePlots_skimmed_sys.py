@@ -160,24 +160,24 @@ def makePlotsCombined(allcats,sys,args):
         except:
             print "directory exists"
         #for variableHandle,nobrackets in vars[cat].iteritems():
-        cat = "mmmt_inclusive"
-        for variableHandle in allcats["mmmt_inclusive"].vars.keys():
+        cat = args.channel+"_inclusive"
+        for variableHandle in allcats[args.channel+"_inclusive"].vars.keys():
                 fin = uproot.open(args.input)
-                variable = allcats["mmmt_inclusive"].vars[variableHandle][0]
+                variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
                 if variable == "evt": continue
 
-                if variableHandle in allcats["mmmt_inclusive"].newvariables.keys():
+                if variableHandle in allcats[args.channel+"_inclusive"].newvariables.keys():
                     var = variableHandle
-                    bins = allcats["mmmt_inclusive"].newvariables[variableHandle][1]
+                    bins = allcats[args.channel+"_inclusive"].newvariables[variableHandle][1]
                 else:
-                    variable = allcats["mmmt_inclusive"].vars[variableHandle][0]
+                    variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
                     if "[" in variable:
                         basevar = variable.split("[")[0]
                         index = int(variable.split("[")[1].split("]")[0])
                         var = variableHandle+"_"+str(index)
                     else:
-                        var = allcats["mmmt_inclusive"].vars[variableHandle][0]
-                        bins = allcats["mmmt_inclusive"].vars[variableHandle][1]
+                        var = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                        bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
 
                 print("working on variable "+str(var)+" with handle "+str(variableHandle))
                 if type(bins[0])==list:
@@ -200,12 +200,12 @@ def makePlotsCombined(allcats,sys,args):
 
                 if args.mc:
                     if variableHandle=="AMass":
-                        fileout = open("outplots_"+args.output+"_"+sys+"/"+str(allcats["mmmt_inclusive"].name)+"_info.txt","w")
-                        fileout.write("Working on category "+allcats["mmmt_inclusive"].name+"\n")
+                        fileout = open("outplots_"+args.output+"_"+sys+"/"+str(allcats[args.channel+"_inclusive"].name)+"_info.txt","w")
+                        fileout.write("Working on category "+allcats[args.channel+"_inclusive"].name+"\n")
                 else:
                     if variableHandle=="AMass_blinded":
-                        fileout = open("outplots_"+args.output+"_"+sys+"/"+str(allcats["mmmt_inclusive"].name)+"_info.txt","w")
-                        fileout.write("Working on category "+allcats["mmmt_inclusive"].name+"\n")
+                        fileout = open("outplots_"+args.output+"_"+sys+"/"+str(allcats[args.channel+"_inclusive"].name)+"_info.txt","w")
+                        fileout.write("Working on category "+allcats[args.channel+"_inclusive"].name+"\n")
 
                 exit = 0  
                 for catLong in fin.keys():
@@ -424,7 +424,10 @@ def makePlotsCombined(allcats,sys,args):
                 pad1.cd()
                 lumi=add_lumi(args.year,doRatio)
                 cms=add_CMS(doRatio)
-                pre=add_Preliminary("all ", doRatio)
+                if args.allchannels:
+                    pre=add_Preliminary("all ", doRatio)
+                else:
+                    pre=add_Preliminary(args.channel+" ", doRatio)
 
                     
 
@@ -544,16 +547,16 @@ def makePlotsCombined(allcats,sys,args):
 
                 if args.mc:
                     if variableHandle=="AMass":
-                        for key in allcats["mmmt_inclusive"].cuts.keys():
-                            for cut in allcats["mmmt_inclusive"].cuts[key]:
+                        for key in allcats[args.channel+"_inclusive"].cuts.keys():
+                            for cut in allcats[args.channel+"_inclusive"].cuts[key]:
                                 fileout.write(str(cut))
                             fileout.write("\n")
                         fileout.write("signal entries "+str(hSignal.GetSumOfWeights())+"\n")
                         fileout.write("background entries "+str(hBackground.GetSumOfWeights())+"\n")
                 else:
                     if variableHandle=="AMass_blinded":
-                        for key in allcats["mmmt_inclusive"].cuts.keys():
-                            for cut in allcats["mmmt_inclusive"].cuts[key]:
+                        for key in allcats[args.channel+"_inclusive"].cuts.keys():
+                            for cut in allcats[args.channel+"_inclusive"].cuts[key]:
                                 fileout.write(str(cut))
                             fileout.write("\n")
                         nbins = hData.GetNbinsX()
@@ -627,6 +630,7 @@ if __name__ == "__main__":
     parser.add_argument("-drawbox",  "--drawbox", default=False,action='store_true',  help="draw blind box")
     parser.add_argument("-fh",  "--fh", default=False,action='store_true',  help="Make Finalized histograms")
     parser.add_argument("-co",  "--combine", default=False,action='store_true',  help="combine all categories")
+    parser.add_argument("-ac",  "--allchannels", default=False,action='store_true',  help="combine all channels")
     parser.add_argument("-de",  "--drawerror", default=False,action='store_true',  help="Draw Error Bars")
     parser.add_argument("-ss",  "--signalScale", default=1.0,  help="Scale the Signal")
     args = parser.parse_args()

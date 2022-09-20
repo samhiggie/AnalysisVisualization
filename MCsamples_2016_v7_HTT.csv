@@ -1,0 +1,37 @@
+DY1JetsToLL,DY,877.8,63730337.0,63730337.0,,/DY1JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/RunIISummer16NanoAODv7-PUMoriond17_Nano02Apr2020_102X_mcRun2_asymptotic_v8-v1/NANOAODSIM
+
+
+
+#############Background MC simulations Cross section
+ /DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8 6077.22 pb (NNLO)b(LO)
+ /DY1JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8 (LO)
+ /DY2JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /DY3JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8 (LO)
+ /DY4JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /TT_TuneCUETP8M2T4_13TeV-powheg-pythia8
+ /WJetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /W1JetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /W2JetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /W3JetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /W4JetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8
+ /ST_tW_antitop_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1
+ /ST_tW_top_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1
+ /ST_t-channel_antitop_4f_leptonDecays_13TeV-powheg-pythia8_TuneCUETP8M1 26.23 pb
+ /ST_t-channel_top_4f_leptonDecays_13TeV-powheg-pythia8_TuneCUETP8M1 44.07 pb
+ /VVTo2L2Nu_13TeV_amcatnloFXFX_madspin_pythia8 11.95 pb
+ /WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8 4.71 pb
+ /WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8 5.96 pb
+ /ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8 3.22 pb
+ /ZZTo4L_TuneCP5_13TeV-amcatnloFXFX-pythia8 1.21 pb
+ /EWKWMinus2Jets_WToLNu_M-50_13TeV-madgraph-pythia8 20.25 pb
+ /EWKWPlus2Jets_WToLNu_M-50_13TeV-madgraph-pythia8 25.62 pb
+ /EWKZ2Jets_ZToLL_M-50_13TeV-madgraph-pythia8 3.987 pb
+ /EWKZ2Jets_ZToNuNu_13TeV-madgraph-pythia8 10.01 pb
+ /GluGluHToWWTo2L2Nu_M125_13TeV_powheg_JHUgen_pythia8 1.154 pb
+ /VBFHToWWTo2L2Nu_M125_13TeV_powheg_JHUgen_pythia8 0.0897 pb
+ /HWplusJ_HToWW_M125_13TeV_powheg_pythia8 0.180 pb
+ /HWminusJ_HToWW_M125_13TeV_powheg_pythia8 0.114 pb
+ /HZJ_HToWW_M125_13TeV_powheg_pythia8 0.163 pb
+ /GluGluZH_HToWW_M125_13TeV_powheg_pythia8 0.0262 pb
+ /ttHToNonbb_M125_TuneCUETP8M2_ttHtranche3_13TeV-powheg-pythia8
+ /WGToLNuG_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8 489.0 pb
