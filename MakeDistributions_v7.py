@@ -78,8 +78,14 @@ def cutOnArray(masterArray,cuts):
     for cut in cuts:
         #Every USE CASE MUST MULTIPLY BY MASK!
         #print cut
-        if type(cut[0][0])==type([0]):
-            mask = cutOnArray(masterArray,cut)
+        #if type(cut[0][0])==type([0]):
+        #    mask = cutOnArray(masterArray,cut)
+        if cut[0][0]=="SPECIAL":
+            # this case allows one to embedd a list of cut strings
+            #print("found special cut list trimming lead and feeding subcuts")
+            #print(cut[1])
+            mask *= cutOnArray(masterArray,cut[1])
+            continue
 
         if cut[0][0]=="EQT":
             for i,var in enumerate(cut[1]):
@@ -144,8 +150,49 @@ def cutOnArray(masterArray,cuts):
 
 
     return mask
+def getElectronSF(pt,eta):
+    electronSFfile = ROOT.TFile()
+    year = args.year 
+    if year=="2016":
+        electronSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/AnalysisVisualization/2016LegacyReReco_ElectronMVA90noiso_Fall17V2.root")
+    if year=="2017":
+        electronSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/AnalysisVisualization/2017_ElectronMVA90noiso.root")
+    if year=="2018":
+        electronSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/AnalysisVisualization/2018_ElectronMVA90noiso.root")
+    try:
+        EleSFhisto = electronSFfile.Get("EGamma_SF2D")
+    except:
+        return 1.0
+    
+    binnum = EleSFhisto.FindBin(eta,pt) 
+    sf = EleSFhisto.GetBinContent(binnum)
+    if sf==0:
+        sf=1.0
+    #print("Electron pt ",pt," Electron sf ",sf)
+    return sf 
 
+def getLowMuSF(pt,eta):
+    lowmuSFfile = ROOT.TFile()
+    muSFhisto = ROOT.TH2D()
+    year = args.year
+    if year=="2016":
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2016/2016_Jpsi/RunBCDEF_SF_ID.root")
+    if year=="2017":
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2017/2017_Jpsi/RunBCDEF_SF_ID.root")
+    if year=="2018":
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2018/2018_Jpsi/RunBCDEF_SF_ID.root")
 
+    try:
+        muSFhisto = lowmuSFfile.Get("NUM_MediumID_DEN_genTracks_pt_abseta")
+    except:
+        return 1.0
+    
+    binnum = muSFhisto.FindBin(pt,eta) 
+    sf = muSFhisto.GetBinContent(binnum)
+    if sf==0:
+        sf=1.0
+    #print("muon pt ",pt," low muon sf ",sf)
+    return sf 
 #for fake factor return the bin value from event content
 #pt is a histogram
 def ptFun(pt,numpyArr):
@@ -154,6 +201,57 @@ def ptFun(pt,numpyArr):
     newArr = np.vectorize(pt.GetBinContent)(newArr)
 
     return newArr
+
+def getPUfactor(masterArray):
+    import time
+    from ROOT import TFile, TTree, TH1D, TCanvas, TLorentzVector  
+    import numpy as np
+    tStart = time.time()
+    #print("Entering pileup function")
+    pileUpArray = np.full(len(masterArray['evt']),1.0)
+    #fData = ROOT.TFile.Open("${CMSSW_BASE}/src/ZH_Run2/pileup/data_pileup_{0:s}.root".format(args.year))
+    year = str(args.year)
+    if year=="2016":
+        fData = ROOT.TFile.Open("${CMSSW_BASE}/src/ZH_Run2/pileup/data_pileup_2016.root")
+    if year=="2017":
+        fData = ROOT.TFile.Open("${CMSSW_BASE}/src/ZH_Run2/pileup/data_pileup_2017.root")
+    if year=="2018":
+        fData = ROOT.TFile.Open("${CMSSW_BASE}/src/ZH_Run2/pileup/data_pileup_2018.root")
+
+    hData = fData.Get('pileup')
+    #print("hData={0:s}".format(str(hData)))
+    binWidth = hData.GetBinWidth(1)
+    xMin = hData.GetBinLowEdge(1)
+    nBins = hData.GetNbinsX()
+    xMax = xMin + nBins*binWidth
+    bins = np.linspace(xMin+0.5*binWidth,xMax-0.5*binWidth,nBins)
+    #print("nBins={0:d} binWidth={1:f} xMin={2:f} xMax={3:f}".format(nBins,binWidth,xMin,xMax))
+
+    hMC = TH1D("hMC","hMC",nBins,xMin,xMax)
+    hWeight = TH1D("hWeight","hWeight",nBins,xMin,xMax)
+    root_numpy.fill_hist(hMC,masterArray["nPU"])
+    root_numpy.fill_hist(hWeight,masterArray["nPU"],masterArray["Generator_weight"])
+    
+    nData = hData.GetSumOfWeights()
+    pData = np.array(hData)[1:-1]/nData
+    nMC = hMC.GetSumOfWeights()
+    pMC = np.array(hMC)[1:-1]
+    pMC /= nMC
+    pMC = np.maximum(1.e-5*np.ones_like(pMC),pMC)
+    #print("sum of pMC={0:f}".format(np.sum(pMC)))
+    ratio = np.divide(pData,pMC)
+    #print("ratio of data to mc numpy ",ratio[98])
+    minmask = np.where(masterArray["nPUtrue"]>98)
+    masterArray["nPUtrue"][minmask]=98
+    #print("master array after ceiling ",masterArray["nPUtrue"])
+    pileuptrue = masterArray["nPUtrue"]
+    for ipu,pu in enumerate(pileuptrue):
+        #print("pileup ",int(pileuptrue[ipu]))
+        #print("scale factor ",ratio[int(pileuptrue[ipu])])
+        pileUpArray[ipu] = ratio[int(pileuptrue[ipu])]
+    #print("After pileup loop:  time={0:.1f} s   time/event={1:.1f} us".format(time.time()-tStart,1.e6*(time.time()-tStart)))
+    return pileUpArray 
+
 
 def getEventWeightDicitonary(year):
     #import copyreg, copy, pickle # for picking the bound methods due to the multiplrocess tool
@@ -164,19 +262,43 @@ def getEventWeightDicitonary(year):
 
     if year=="2016":
         yearhandle = "2016Legacy"
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2016/2016_Jpsi/RunBCDEF_SF_ID.root")
     if year=="2017":
         yearhandle = "2017ReReco"
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2017/2017_Jpsi/RunBCDEF_SF_ID.root")
     if year=="2018":
         yearhandle = "2018ReReco"
-    tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Medium').getSFvsPT
-    antiEleSFToolVL = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','VLoose').getSFvsEta
-    antiMuSFToolVL  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','VLoose').getSFvsEta
-    antiEleSFToolT = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','Tight').getSFvsEta
-    antiMuSFToolT  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','Tight').getSFvsEta
+        lowmuSFfile = ROOT.TFile.Open("${CMSSW_BASE}/src/muonefficiencies/Run2/preUL/2018/2018_Jpsi/RunBCDEF_SF_ID.root")
+
+    #maybe I need this per channel?
+    if args.channel == "mmmt":
+        #tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Medium').getSFvsPT
+        #antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','VLoose').getSFvsEta
+        #antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','Tight').getSFvsEta
+        tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Loose').getSFvsPT
+        antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','VLoose').getSFvsEta
+        antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','Tight').getSFvsEta
+    if args.channel == "mmtt":
+        #tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Medium').getSFvsPT
+        tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Loose').getSFvsPT
+        antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','VLoose').getSFvsEta
+        antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','VLoose').getSFvsEta
+    if args.channel == "mmet":
+        tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Medium').getSFvsPT
+        #tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','Loose').getSFvsPT
+        antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','Tight').getSFvsEta
+        #antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','Medium').getSFvsEta
+        antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','VLoose').getSFvsEta
+    if args.channel == "mmem":
+        tauIDSF = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSjet','VVLoose').getSFvsPT
+        antiEleSFTool = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSe','Medium').getSFvsEta
+        #antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','VLoose').getSFvsEta
+        antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','Medium').getSFvsEta
+        #antiMuSFTool  = TauIDSFTool(yearhandle,'DeepTau2017v2p1VSmu','Tight').getSFvsEta
 
     EventWeights={
-            "3_tauSF_8":[[["cat","==",8],["gen_match_3","==",5]],[np.vectorize(tauIDSF),["pt_3","gen_match_3"]]],
-            "4_tauSF_8":[[["cat","==",8],["gen_match_4","==",5]],[np.vectorize(tauIDSF),["pt_4","gen_match_4"]]],
+            #"3_tauSF_8":[[["cat","==",8],["gen_match_3","==",5]],[np.vectorize(tauIDSF),["pt_3","gen_match_3"]]],
+            #"4_tauSF_8":[[["cat","==",8],["gen_match_4","==",5]],[np.vectorize(tauIDSF),["pt_4","gen_match_4"]]],
             "3_tauSF_7":[[["cat","==",7],["gen_match_3","==",5]],[np.vectorize(tauIDSF),["pt_3","gen_match_3"]]],
             "4_tauSF_7":[[["cat","==",7],["gen_match_4","==",5]],[np.vectorize(tauIDSF),["pt_4","gen_match_4"]]],
             "3_tauSF_6":[[["cat","==",6],["gen_match_3","==",5]],[np.vectorize(tauIDSF),["pt_3","gen_match_3"]]],
@@ -201,32 +323,46 @@ def getEventWeightDicitonary(year):
             # "4_electronSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolVL),["eta_4","gen_match_4"]]],
             # "3_electronSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolVL),["eta_3","gen_match_3"]]],
             # "4_electronSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolVL),["eta_4","gen_match_4"]]]
-            "1_lowmu_bar":[[["pt_1",">",5],["pt_1","<",9],["eta_1","<",1.479]],       [0.956]],#taken from AN-2017 173
-            "1_lowmu_end":[[["pt_1",">",5],["pt_1","<",9],["eta_1",">",1.479]],       [0.930]],
-            "1_midmu_bar":[[["pt_1",">",9],["pt_1","<",10],["eta_1","<",1.479]],       [0.916]],
-            "1_midmu_end":[[["pt_1",">",9],["pt_1","<",10],["eta_1",">",1.479]],       [0.897]],
-            "2_lowmu_bar":[[["pt_2",">",5],["pt_2","<",9],["eta_2","<",1.479]],       [0.956]],#taken from AN-2017 173
-            "2_lowmu_end":[[["pt_2",">",5],["pt_2","<",9],["eta_2",">",1.479]],       [0.930]],
-            "2_midmu_bar":[[["pt_2",">",9],["pt_2","<",10],["eta_2","<",1.479]],       [0.916]],
-            "2_midmu_end":[[["pt_2",">",9],["pt_2","<",10],["eta_2",">",1.479]],       [0.897]],
+            #"1_lowmu_bar":[[["pt_1",">",5],["pt_1","<",9],["eta_1","<",1.479]],       [0.956]],#taken from AN-2017 173
+            #"1_lowmu_end":[[["pt_1",">",5],["pt_1","<",9],["eta_1",">",1.479]],       [0.930]],
+            #"1_midmu_bar":[[["pt_1",">",9],["pt_1","<",10],["eta_1","<",1.479]],       [0.916]],
+            #"1_midmu_end":[[["pt_1",">",9],["pt_1","<",10],["eta_1",">",1.479]],       [0.897]],
+            #"2_lowmu_bar":[[["pt_2",">",5],["pt_2","<",9],["eta_2","<",1.479]],       [0.956]],#taken from AN-2017 173
+            #"2_lowmu_end":[[["pt_2",">",5],["pt_2","<",9],["eta_2",">",1.479]],       [0.930]],
+            #"2_midmu_bar":[[["pt_2",">",9],["pt_2","<",10],["eta_2","<",1.479]],       [0.916]],
+            #"2_midmu_end":[[["pt_2",">",9],["pt_2","<",10],["eta_2",">",1.479]],       [0.897]],
 
-            "3_muonSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(antiMuSFToolT),["eta_3","gen_match_3"]]],
-            "4_muonSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(antiMuSFToolT),["eta_4","gen_match_4"]]],
-            "3_muonSF_7":[[["cat","==",7],["gen_match_3","==",15]],[np.vectorize(antiMuSFToolT),["eta_3","gen_match_3"]]],
-            "4_muonSF_7":[[["cat","==",7],["gen_match_4","==",15]],[np.vectorize(antiMuSFToolT),["eta_4","gen_match_4"]]],
-            "3_muonSF_6":[[["cat","==",6],["gen_match_3","==",15]],[np.vectorize(antiMuSFToolT),["eta_3","gen_match_3"]]],
-            "4_muonSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiMuSFToolT),["eta_4","gen_match_4"]]],
-            "3_muonSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiMuSFToolT),["eta_3","gen_match_3"]]],
-            "4_muonSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiMuSFToolT),["eta_4","gen_match_4"]]],
+            "3_muonSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(antiMuSFTool),["eta_3","gen_match_3"]]],
+            #"4_muonSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(antiMuSFTool),["eta_4","gen_match_4"]]],
+            "3_muonSF_7":[[["cat","==",7],["gen_match_3","==",15]],[np.vectorize(antiMuSFTool),["eta_3","gen_match_3"]]],
+            "4_muonSF_7":[[["cat","==",7],["gen_match_4","==",15]],[np.vectorize(antiMuSFTool),["eta_4","gen_match_4"]]],
+            "3_muonSF_6":[[["cat","==",6],["gen_match_3","==",15]],[np.vectorize(antiMuSFTool),["eta_3","gen_match_3"]]],
+            "4_muonSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiMuSFTool),["eta_4","gen_match_4"]]],
+            "3_muonSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiMuSFTool),["eta_3","gen_match_3"]]],
+            "4_muonSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiMuSFTool),["eta_4","gen_match_4"]]],
 
-            "3_electronSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolT),["eta_3","gen_match_3"]]],
-            "4_electronSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolT),["eta_4","gen_match_4"]]],
-            "3_electronSF_7":[[["cat","==",7],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolT),["eta_3","gen_match_3"]]],
-            "4_electronSF_7":[[["cat","==",7],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolT),["eta_4","gen_match_4"]]],
-            "3_electronSF_6":[[["cat","==",6],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolT),["eta_3","gen_match_3"]]],
-            "4_electronSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolT),["eta_4","gen_match_4"]]],
-            "3_electronSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiEleSFToolT),["eta_3","gen_match_3"]]],
-            "4_electronSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiEleSFToolT),["eta_4","gen_match_4"]]]
+            #"3_electronSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(antiEleSFTool),["eta_3","gen_match_3"]]],
+            "4_electronSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(antiEleSFTool),["eta_4","gen_match_4"]]],
+            "3_electronSF_7":[[["cat","==",7],["gen_match_3","==",15]],[np.vectorize(antiEleSFTool),["eta_3","gen_match_3"]]],
+            "4_electronSF_7":[[["cat","==",7],["gen_match_4","==",15]],[np.vectorize(antiEleSFTool),["eta_4","gen_match_4"]]],
+            "3_electronSF_6":[[["cat","==",6],["gen_match_3","==",15]],[np.vectorize(antiEleSFTool),["eta_3","gen_match_3"]]],
+            "4_electronSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(antiEleSFTool),["eta_4","gen_match_4"]]],
+            "3_electronSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(antiEleSFTool),["eta_3","gen_match_3"]]],
+            "4_electronSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(antiEleSFTool),["eta_4","gen_match_4"]]],
+
+
+            #added later ... low muon pt scale factors from Muon Pog validated in Jsi region 
+            #https://gitlab.cern.ch/cms-muonPOG/muonefficiencies/-/tree/master/Run2/preUL
+            "3_elecSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(getElectronSF),["pt_3","eta_3"]]],
+            "3_elecSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(getElectronSF),["pt_3","eta_3"]]],
+            #"3_lowmuonSF_8":[[["cat","==",8],["gen_match_3","==",15]],[np.vectorize(getLowMuSF),["pt_3","eta_3"]]],
+            "4_lowmuonSF_8":[[["cat","==",8],["gen_match_4","==",15]],[np.vectorize(getLowMuSF),["pt_4","eta_4"]]],
+            "3_lowmuonSF_7":[[["cat","==",7],["gen_match_3","==",15]],[np.vectorize(getLowMuSF),["pt_3","eta_3"]]],
+            "4_lowmuonSF_7":[[["cat","==",7],["gen_match_4","==",15]],[np.vectorize(getLowMuSF),["pt_4","eta_4"]]],
+            "3_lowmuonSF_6":[[["cat","==",6],["gen_match_3","==",15]],[np.vectorize(getLowMuSF),["pt_3","eta_3"]]],
+            "4_lowmuonSF_6":[[["cat","==",6],["gen_match_4","==",15]],[np.vectorize(getLowMuSF),["pt_4","eta_4"]]],
+            "3_lowmuonSF_5":[[["cat","==",5],["gen_match_3","==",15]],[np.vectorize(getLowMuSF),["pt_3","eta_3"]]],
+            "4_lowmuonSF_5":[[["cat","==",5],["gen_match_4","==",15]],[np.vectorize(getLowMuSF),["pt_4","eta_4"]]]
             }
     # if year == "2016":
     #     EventWeights={
@@ -315,7 +451,6 @@ def initialize(args):
 
     #Structure for mapping between processes and weights
     from utils.Weights import CommonWeights
-    from utils.Weights import HAAWeights
 
 
     #sys.path.append('../SFs/')
@@ -335,6 +470,14 @@ def initialize(args):
     from utils.Parametrization import Process
 
     #Gather the analysis datasets and info
+    allcats={}
+    HAA_processes={}
+    finalDistributions={}
+    filelist = {}
+    weightHistoDict={}
+    jetWeightMultiplicity={}
+    EventWeights={}
+    datadrivenPackage={}
     sampleDict = {}
     #csvfile = "MCsamples_2016_v7_ZZ.csv"
     #csvfile = "MCsamples_2016_v7.csv"
@@ -355,8 +498,8 @@ def initialize(args):
     for line in open(csvfile,'r').readlines() :
             # structure for csv to sampleDict conversion
             #[nickname]        = [category,xsec,numberOfEvents,finishedEvents,idk?,DASDataset]
-            print "reading line "
-            print line
+            #print "reading line "
+            #print line
             if "#" in line[0]: continue
             if len(line.split(',')[2].split("*"))>1:
                 tempval=1.0
@@ -383,6 +526,9 @@ def initialize(args):
         #print(categories[category]['name'])
         #if categories[category]['name']==args.channel+"_inclusive":
         #if categories[category]['name']=="mmet_inclusive":
+        #allows for anchors in the yaml file .. only load categories with names 
+        try: categories[category]['name']
+        except: continue
         tempcat = Category()
         tempcat.name=categories[category]['name']
         tempcat.cuts=categories[category]['cuts']
@@ -412,120 +558,143 @@ def initialize(args):
     #MC for background
 
     #HAA_process = {name: Process(dir, name, info) for name, info in sampleDict.items()}
-    #weightHistoDict = {}
+    weightHistoDict = {}
+    jetWeightMultiplicity = {}
     nevents = 250000
 
-    if not (args.datadrivenZH or args.datadrivenSM):
-        for sample in sampleDict.keys():
-            temppro = Process()
-            temppro.nickname=sample
-            temppro.file=dir+sample+"_"+args.year+".root"
+    if not args.onlydata:
+        if not (args.datadrivenHAA or args.datadrivenSM):
+            for sample in sampleDict.keys():
+                temppro = Process()
+                temppro.nickname=sample
+                temppro.file=dir+sample+"_"+args.year+".root"
 
-            frooin = ROOT.TFile.Open(temppro.file,"read")
-            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
-            temppro.cuts={sampleDict[sample][0]:""}
-            if "ggTo2mu2tau" in sample:
-                if args.year==2016: nevents = 250000
-                if args.year==2017: nevents = 350000
-                if args.year==2017: nevents = 500000
-                if args.extract:
-                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
-                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                frooin = ROOT.TFile.Open(temppro.file,"read")
+                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
+                temppro.cuts={sampleDict[sample][0]:""}
+                if "ggTo2mu2tau" in sample:
+                    if args.year==2016: nevents = 250000
+                    if args.year==2017: nevents = 350000
+                    if args.year==2017: nevents = 500000
+                    if args.extract:
+                        #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
 
-                else:
-                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
-                #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
-                #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001* 5.0)} # SM Higgs xsec x BR Haa  for signal extraction data MC control plots(AN 17029)
-            HAA_processes[temppro.nickname]=temppro
+                    else:
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
+                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
+                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.001* 5.0)} # SM Higgs xsec x BR Haa  for signal extraction data MC control plots(AN 17029)
+                HAA_processes[temppro.nickname]=temppro
 
-    if (args.datadrivenZH or args.datadrivenSM):
-        for sample in sampleDict.keys():
-            temppro = Process()
-            temppro.nickname=sample
-            #temppro.file=sample+"_2016.root"
-            #temppro.file=dir+sample+"_2016.root"
-            temppro.file=dir+sample+"_"+args.year+".root"
-            temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
-            if args.channel=="mmtt":
-                truetau = [
-                            [["OR"],
-                            ["gen_match_3","==",5],
-                            ["gen_match_4","==",5]
-                            ]]
-            if args.channel=="mmem":
-                truetau = [ [["OR"],
-                            ["gen_match_3","==",15]
-                            ],
-                            [["OR"],
-                            ["gen_match_4","==",15]
-                            ] ]
-            if args.channel=="mmmt" or args.channel=="mmet":
-                truetau = [[["OR"],
-                            ["gen_match_3","==",15],
-                            ["gen_match_4","==",5]
-                            ]]
-            temppro.cuts={sampleDict[sample][0]:truetau} #ONLY SELECT PRMOPT FOR MC!
-            if "ggTo2mu2tau" in sample:
-                if args.year==2016: nevents = 250000
-                if args.year==2017: nevents = 350000
-                if args.year==2017: nevents = 500000
-                #for visualization!
-                if args.extract:
-                    #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
-                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
-
-                else:
-                    temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
-            HAA_processes[temppro.nickname]=temppro
-
-    if (args.datameasureZH):
-        try:
-            os.mkdir("FFhistos_"+str(args.ffout))
-        except:
-            print("directory exists")
-        for proObj in HAA_processes.keys():
-            if proObj!="data_obs" and proObj!="FF" and "ggTo2mu2tau" not in proObj:
-                if args.channel=="mmmt" or args.channel=="mmet":
-                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
-                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",5]]
-                    HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","!=",5]]
-                    HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","!=",5]]
-
+        if (args.datadrivenHAA or args.datadrivenSM):
+            for sample in sampleDict.keys():
+                temppro = Process()
+                temppro.nickname=sample
+                #temppro.file=sample+"_2016.root"
+                #temppro.file=dir+sample+"_2016.root"
+                temppro.file=dir+sample+"_"+args.year+".root"
+                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
                 if args.channel=="mmtt":
-                    if "ggTo2mu2tau" in proObj:
-                        continue
-                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",5]]
-                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",5]]
-                    HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","!=",5]]
-                    HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","!=",5]]
+                    #truetau = [
+                    #            [["OR"],
+                    #            ["gen_match_3","==",5],
+                    #            ["gen_match_4","==",5]
+                    #            ]]
+                    truetau = [["gen_match_3","==",5],
+                                ["gen_match_4","==",5]
+                                ]
                 if args.channel=="mmem":
-                    HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","!=",15]]
-                    HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","!=",15]]
-                    if "ggTo2mu2tau" in proObj:
-                        continue
-                    HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
-                    HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",15]]
-                else: # default case is close enough
+                    #truetau = [ [["OR"],
+                    #            ["gen_match_3","==",15]
+                    #            ],
+                    #            [["OR"],
+                    #            ["gen_match_4","==",15]
+                    #            ] ]
+                    truetau = [["gen_match_3","==",15],
+                                ["gen_match_4","==",15]
+                                ]
+                if args.channel=="mmmt" or args.channel=="mmet":
+                    #truetau = [[["OR"],
+                    #            ["gen_match_3","==",15],
+                    #            ["gen_match_4","==",5]
+                    #            ]]
+                    truetau = [["gen_match_3","==",15],
+                               ["gen_match_4","==",5]
+                                ]
+                temppro.cuts={sampleDict[sample][0]:truetau} #ONLY SELECT PRMOPT FOR MC!
+                if "ggTo2mu2tau" in sample:
+                    if args.year==2016: nevents = 250000
+                    if args.year==2017: nevents = 350000
+                    if args.year==2017: nevents = 500000
+                    #for visualization!
+                    if args.extract:
+                        #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+
+                    else:
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
+                HAA_processes[temppro.nickname]=temppro
+
+        #OK make sure that process cuts are used in cutOnTreeArray procuts 
+        if (args.datameasure):
+            for proObj in HAA_processes.keys():
+                if proObj!="data_obs" and proObj!="FF" and "ggTo2mu2tau" not in proObj:
+                    if args.channel=="mmmt" or args.channel=="mmet":
+                        #this create a new end distribution with like all the variables
+                        HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
+                        HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",5]]
+                        HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","!=",5]]
+                        HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","!=",5]]
+
+                    if args.channel=="mmtt":
+                        if "ggTo2mu2tau" in proObj:
+                            continue
+                        HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",5]]
+                        HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",5]]
+                        HAA_processes[proObj].cuts["fake1"] = [["gen_match_3","!=",5]]
+                        HAA_processes[proObj].cuts["fake2"] = [["gen_match_4","!=",5]]
+                    if args.channel=="mmem":
+                        HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","!=",15]]
+                        HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","!=",15]]
+                        if "ggTo2mu2tau" in proObj:
+                            continue
+                        HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","==",15]]
+                        HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","==",15]]
+                    else: # default case is close enough
+                        HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
+                        HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
+                        if "ggTo2mu2tau" in proObj:
+                            continue
+                        HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
+                        HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+
+        elif (args.datadrivenHAA or args.datadrivenSM):
+            for proObj in HAA_processes.keys():
+                if proObj!="data_obs" and proObj!="FF":
                     HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
                     HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
                     if "ggTo2mu2tau" in proObj:
-                        continue
+                        print "skipping signal prompt mc"
+                        continue  #this hasn't been added yet ... this is needed to omit signal!!
                     HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
                     HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
-    elif (args.datadrivenZH or args.datadrivenSM):
-        for proObj in HAA_processes.keys():
-            if proObj!="data_obs" and proObj!="FF" and not args.skim:
-                HAA_processes[proObj].cuts["fake1_"+str(proObj)] = [["gen_match_3","==",0]]
-                HAA_processes[proObj].cuts["fake2_"+str(proObj)] = [["gen_match_4","==",0]]
-                if "ggTo2mu2tau" in proObj:
-                    print "skipping signal prompt mc"
-                    continue  #this hasn't been added yet ... this is needed to omit signal!!
-                HAA_processes[proObj].cuts["prompt1"] = [["gen_match_3","!=",0]]
-                HAA_processes[proObj].cuts["prompt2"] = [["gen_match_4","!=",0]]
+
+            #        if args.channel=="mmmt" or args.channel=="mmet":
+            #            for key, subprocess in HAA_processes[proObj].cuts.iteritems():
+            #                 #subprocess.append(["gen_match_3","==",15])
+            #                 #subprocess.append(["gen_match_4","==",5])
+            #                 subprocess.append(["gen_match_3","!=",15])
+            #                 subprocess.append(["gen_match_4","!=",5])
+            #                 #[["gen_match_3","!=",5]]
+            #                 #[["gen_match_4","!=",5]]
 
 
     #loading special processes ... fake factor and data!
     for process in processes_special:
+        try: processes_special[process]['nickname']
+        except: continue
         temppro = Process()
         temppro.nickname=processes_special[process]['nickname']
         temppro.cuts=processes_special[process]['cuts']
@@ -537,206 +706,223 @@ def initialize(args):
     #print "==========================================================================================="
 
 
-    #precise weights for jet multiplicity
-    from utils.Weights import jet_exc_samples
-    from utils.Weights import jetIncOnly
-    inc_samps = jetIncOnly[args.year]
-    jet_exc_samples = jet_exc_samples[args.year]
+    if not args.onlydata:
+        #precise weights for jet multiplicity
+        from utils.Weights import jet_exc_samples
+        from utils.Weights import jetIncOnly
+        inc_samps = jetIncOnly[args.year]
+        jet_exc_samples = jet_exc_samples[args.year]
 
-    #file list for easy reading
-    for proObj in HAA_processes.keys():
-        filelist[proObj]=HAA_processes[proObj].file
+        #file list for easy reading
+        for proObj in HAA_processes.keys():
+            filelist[proObj]=HAA_processes[proObj].file
 
-    # adding kfactor to relevent samples
-    for sample in sampleDict.keys():
-        if sample in jet_exc_samples and sample.startswith("DY"):
-            HAA_processes[sample].weights.update({"kfactor":1.1637})
-        if sample in jet_exc_samples and sample.startswith("W"):
-            HAA_processes[sample].weights.update({"kfactor":1.221})
+        # adding kfactor to relevent samples
+        for sample in sampleDict.keys():
+            if sample in jet_exc_samples and sample.startswith("DY"):
+                HAA_processes[sample].weights.update({"kfactor":1.1637})
+            if sample in jet_exc_samples and sample.startswith("W"):
+                HAA_processes[sample].weights.update({"kfactor":1.221})
 
-    weightHistoDict = {}
-    for nickname, filename in filelist.iteritems():
-        #frooin = ROOT.TFile(dir+filename)
-        frooin = ROOT.TFile(filename)
-        hists = None
-        try:
-            if nickname.startswith("DYJetsToLL"):
-                hists=[frooin.Get("hWeights").Clone(),
-                       frooin.Get("DY1genWeights").Clone(),
-                       frooin.Get("DY2genWeights").Clone(),
-                       frooin.Get("DY3genWeights").Clone(),
-                       frooin.Get("DY4genWeights").Clone(),
-                       ]
-            elif nickname.startswith("WJetsToLNu"):
-                hists=[frooin.Get("hWeights").Clone(),
-                      frooin.Get("W1genWeights").Clone(),
-                      frooin.Get("W2genWeights").Clone(),
-                      frooin.Get("W3genWeights").Clone(),
-                      frooin.Get("W4genWeights").Clone(),
-                      ]
-            else:
-                hists = frooin.Get("hWeights").Clone()
-                hists.SetDirectory(0)
-            if isinstance(hists, list):
-                for hist in hists:
-                    hist.SetDirectory(0)
-            weightHistoDict[nickname] = hists
-            frooin.Close()
-        except:
-            print nickname," hWeights prob doesn't exist?"
+        weightHistoDict = {}
+        for nickname, filename in filelist.iteritems():
+            #frooin = ROOT.TFile(dir+filename)
+            frooin = ROOT.TFile(filename)
+            hists = None
+            try:
+                if nickname.startswith("DYJetsToLL"):
+                    hists=[frooin.Get("hWeights").Clone(),
+                           frooin.Get("DY1genWeights").Clone(),
+                           frooin.Get("DY2genWeights").Clone(),
+                           frooin.Get("DY3genWeights").Clone(),
+                           frooin.Get("DY4genWeights").Clone(),
+                           ]
+                elif nickname.startswith("WJetsToLNu"):
+                    hists=[frooin.Get("hWeights").Clone(),
+                          frooin.Get("W1genWeights").Clone(),
+                          frooin.Get("W2genWeights").Clone(),
+                          frooin.Get("W3genWeights").Clone(),
+                          frooin.Get("W4genWeights").Clone(),
+                          ]
+                else:
+                    hists = frooin.Get("hWeights").Clone()
+                    hists.SetDirectory(0)
+                if isinstance(hists, list):
+                    for hist in hists:
+                        hist.SetDirectory(0)
+                weightHistoDict[nickname] = hists
+                frooin.Close()
+            except:
+                print nickname," hWeights prob doesn't exist?"
 
-    print weightHistoDict
-    #for key in weightHistoDict.keys():
-        #if weightHistoDict[key].Get
-    #print weightHistoDict["DYJetsToLLext1"]
-    #print weightHistoDict["WJetsToLNu"]
-
-
-    jetWeightMultiplicity = {}
-    NJetWeights = {}
-    # for all the DYJet and WJet files make sure that the exts are summed PRIOR to makeCutsOnTreeArray
-    #print inc_samps
-    for inc_group in inc_samps:
-        sumOfWeights = np.zeros(5)
-        for sample in inc_group:
-            weights = weightHistoDict[sample]
-            sumOfWeights += [w.GetSumOfWeights() for w in weights]
-        sumOfWeights[sumOfWeights==0] = 1e-10 # if value is 0 to stop infs
-        #print(sumOfWeights)
-        for sample in inc_group:
-            jetWeightMultiplicity[sample] = sumOfWeights
+        #print weightHistoDict
+        #for key in weightHistoDict.keys():
+            #if weightHistoDict[key].Get
+        #print weightHistoDict["DYJetsToLLext1"]
+        #print weightHistoDict["WJetsToLNu"]
 
 
-    if args.year=="2018":
-        DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
-        jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
-        DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
-        jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
-        DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
-        jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
-        DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
-        jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
-        jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
-        jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
-        jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
-        jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
-
-    if args.year=="2017":
-        DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
-        jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
-        DY1JetsFile_ext1 = ROOT.TFile.Open(filelist["DY1JetsToLL_ext1"],"read")
-        jetWeightMultiplicity["DY1JetsToLL_ext1"]=DY1JetsFile_ext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["DY1JetsToLL_ext1"]+=jetWeightMultiplicity["DY1JetsToLL"]
-        jetWeightMultiplicity["DY1JetsToLL"]+=jetWeightMultiplicity["DY1JetsToLL_ext1"]
-
-        DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
-        jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
-        DY2JetsFile_ext1 = ROOT.TFile.Open(filelist["DY2JetsToLL_ext1"],"read")
-        jetWeightMultiplicity["DY2JetsToLL_ext1"]=DY2JetsFile_ext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["DY2JetsToLL_ext1"]+=jetWeightMultiplicity["DY2JetsToLL"]
-        jetWeightMultiplicity["DY2JetsToLL"]+=jetWeightMultiplicity["DY2JetsToLL_ext1"]
-
-        DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
-        jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
-        DY3JetsFile_ext1 = ROOT.TFile.Open(filelist["DY3JetsToLL_ext1"],"read")
-        jetWeightMultiplicity["DY3JetsToLL_ext1"]=DY3JetsFile_ext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["DY3JetsToLL_ext1"]+=jetWeightMultiplicity["DY3JetsToLL"]
-        jetWeightMultiplicity["DY3JetsToLL"]+=jetWeightMultiplicity["DY3JetsToLL_ext1"]
-
-        DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
-        jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
-        jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
-        jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
-        jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
-        jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
-
-    if args.year=="2016":
-        DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
-        jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
-        DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
-        jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
-        DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
-        jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
-        DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
-        jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
-        jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
-        jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
-        W2JetsFileext1 = ROOT.TFile.Open(filelist["W2JetsToLNu_ext1"],"read")
-        jetWeightMultiplicity["W2JetsToLNu"]+=W2JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W2JetsToLNu_ext1"]=W2JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W2JetsToLNu_ext1"]+=W2JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
-        jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
-        W3JetsFileext1 = ROOT.TFile.Open(filelist["W3JetsToLNu_ext1"],"read")
-        jetWeightMultiplicity["W3JetsToLNu"]+=W3JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W3JetsToLNu_ext1"]=W3JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W3JetsToLNu_ext1"]+=W3JetsFile.Get("hWeights").GetSumOfWeights()
-
-        W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
-        W4JetsFileext1 = ROOT.TFile.Open(filelist["W4JetsToLNu_ext1"],"read")
-        W4JetsFileext2 = ROOT.TFile.Open(filelist["W4JetsToLNu_ext2"],"read")
-        jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu"]+=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu"]+=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
-
-        jetWeightMultiplicity["W4JetsToLNu_ext1"]=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu_ext1"]+=W4JetsFile.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu_ext1"]+=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
-
-        jetWeightMultiplicity["W4JetsToLNu_ext2"]=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu_ext2"]+=W4JetsFile.Get("hWeights").GetSumOfWeights()
-        jetWeightMultiplicity["W4JetsToLNu_ext2"]+=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
+        jetWeightMultiplicity = {}
+        NJetWeights = {}
+        # for all the DYJet and WJet files make sure that the exts are summed PRIOR to makeCutsOnTreeArray
+        #print inc_samps
+        cancelDYandWxsecreweight = 0
+        for inc_group in inc_samps:
+            sumOfWeights = np.zeros(5)
+            for sample in inc_group:
+                try:
+                    weights = weightHistoDict[sample]
+                except:
+                    cancelDYandWxsecreweight = 1
+                    break
+                sumOfWeights += [w.GetSumOfWeights() for w in weights]
+            if cancelDYandWxsecreweight: break
+            sumOfWeights[sumOfWeights==0] = 1e-10 # if value is 0 to stop infs
+            #print(sumOfWeights)
+            if not cancelDYandWxsecreweight:
+                for sample in inc_group:
+                    jetWeightMultiplicity[sample] = sumOfWeights
 
 
-    Bkg = ["DY","W","TT","ST","EWK"]
-    irBkg = ["ZZ","ZHToTauTau","vbf","WHTT"]
-    TrialphaBkg = ["ttZ","ttW","WWZ","WZZ","ZZZ","WWW_4F","HZJ"]
-    rareBkg = ["Other","rare","WZ"]
-    finalDistributions = {}
-    finalDistributions["Bkg"]=Bkg
-    finalDistributions["data_obs"]=["data_obs"]
-    finalDistributions["a15"]=["a15"]
-    finalDistributions["a20"]=["a20"]
-    finalDistributions["a25"]=["a25"]
-    finalDistributions["a30"]=["a30"]
-    finalDistributions["a35"]=["a35"]
-    finalDistributions["a40"]=["a40"]
-    finalDistributions["a45"]=["a45"]
-    finalDistributions["a50"]=["a50"]
-    finalDistributions["a55"]=["a55"]
-    finalDistributions["a60"]=["a60"]
-    finalDistributions["irBkg"]=irBkg
-    finalDistributions["TrialphaBkg"]=TrialphaBkg
-    finalDistributions["rareBkg"]=rareBkg
-    if args.datameasureZH:
-        finalDistributions["prompt1"]=["prompt1"]
-        finalDistributions["prompt2"]=["prompt2"]
-    if args.datadrivenZH or args.datadrivenSM:
-        Bkg = ["FF"]
-        rareBkg = ["DY","W","TT","ST","EWK","Other","rare","WZ"]
+        if args.year=="2018" and not cancelDYandWxsecreweight:
+            DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
+            jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
+            DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
+            jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
+            DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
+            jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
+            DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
+            jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
+            jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
+            jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
+            jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
+            jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
+
+        if args.year=="2017" and not cancelDYandWxsecreweight:
+            DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
+            jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
+            DY1JetsFile_ext1 = ROOT.TFile.Open(filelist["DY1JetsToLL_ext1"],"read")
+            jetWeightMultiplicity["DY1JetsToLL_ext1"]=DY1JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["DY1JetsToLL_ext1"]+=jetWeightMultiplicity["DY1JetsToLL"]
+            jetWeightMultiplicity["DY1JetsToLL"]+=jetWeightMultiplicity["DY1JetsToLL_ext1"]
+
+            DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
+            jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
+            DY2JetsFile_ext1 = ROOT.TFile.Open(filelist["DY2JetsToLL_ext1"],"read")
+            jetWeightMultiplicity["DY2JetsToLL_ext1"]=DY2JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["DY2JetsToLL_ext1"]+=jetWeightMultiplicity["DY2JetsToLL"]
+            jetWeightMultiplicity["DY2JetsToLL"]+=jetWeightMultiplicity["DY2JetsToLL_ext1"]
+
+            DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
+            jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
+            DY3JetsFile_ext1 = ROOT.TFile.Open(filelist["DY3JetsToLL_ext1"],"read")
+            jetWeightMultiplicity["DY3JetsToLL_ext1"]=DY3JetsFile_ext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["DY3JetsToLL_ext1"]+=jetWeightMultiplicity["DY3JetsToLL"]
+            jetWeightMultiplicity["DY3JetsToLL"]+=jetWeightMultiplicity["DY3JetsToLL_ext1"]
+
+            DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
+            jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
+            jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
+            jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
+            jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
+            jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
+
+        if args.year=="2016" and not cancelDYandWxsecreweight:
+            DY1JetsFile = ROOT.TFile.Open(filelist["DY1JetsToLL"],"read")
+            jetWeightMultiplicity["DY1JetsToLL"]=DY1JetsFile.Get("hWeights").GetSumOfWeights()
+            DY2JetsFile = ROOT.TFile.Open(filelist["DY2JetsToLL"],"read")
+            jetWeightMultiplicity["DY2JetsToLL"]=DY2JetsFile.Get("hWeights").GetSumOfWeights()
+            DY3JetsFile = ROOT.TFile.Open(filelist["DY3JetsToLL"],"read")
+            jetWeightMultiplicity["DY3JetsToLL"]=DY3JetsFile.Get("hWeights").GetSumOfWeights()
+            DY4JetsFile = ROOT.TFile.Open(filelist["DY4JetsToLL"],"read")
+            jetWeightMultiplicity["DY4JetsToLL"]=DY4JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W1JetsFile = ROOT.TFile.Open(filelist["W1JetsToLNu"],"read")
+            jetWeightMultiplicity["W1JetsToLNu"]=W1JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W2JetsFile = ROOT.TFile.Open(filelist["W2JetsToLNu"],"read")
+            jetWeightMultiplicity["W2JetsToLNu"]=W2JetsFile.Get("hWeights").GetSumOfWeights()
+            W2JetsFileext1 = ROOT.TFile.Open(filelist["W2JetsToLNu_ext1"],"read")
+            jetWeightMultiplicity["W2JetsToLNu"]+=W2JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W2JetsToLNu_ext1"]=W2JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W2JetsToLNu_ext1"]+=W2JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W3JetsFile = ROOT.TFile.Open(filelist["W3JetsToLNu"],"read")
+            jetWeightMultiplicity["W3JetsToLNu"]=W3JetsFile.Get("hWeights").GetSumOfWeights()
+            W3JetsFileext1 = ROOT.TFile.Open(filelist["W3JetsToLNu_ext1"],"read")
+            jetWeightMultiplicity["W3JetsToLNu"]+=W3JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W3JetsToLNu_ext1"]=W3JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W3JetsToLNu_ext1"]+=W3JetsFile.Get("hWeights").GetSumOfWeights()
+
+            W4JetsFile = ROOT.TFile.Open(filelist["W4JetsToLNu"],"read")
+            W4JetsFileext1 = ROOT.TFile.Open(filelist["W4JetsToLNu_ext1"],"read")
+            W4JetsFileext2 = ROOT.TFile.Open(filelist["W4JetsToLNu_ext2"],"read")
+            jetWeightMultiplicity["W4JetsToLNu"]=W4JetsFile.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu"]+=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu"]+=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
+
+            jetWeightMultiplicity["W4JetsToLNu_ext1"]=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu_ext1"]+=W4JetsFile.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu_ext1"]+=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
+
+            jetWeightMultiplicity["W4JetsToLNu_ext2"]=W4JetsFileext2.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu_ext2"]+=W4JetsFile.Get("hWeights").GetSumOfWeights()
+            jetWeightMultiplicity["W4JetsToLNu_ext2"]+=W4JetsFileext1.Get("hWeights").GetSumOfWeights()
+
+
+        Bkg = ["DY","W","TT","ST","EWK"]
+        #irBkg = ["ZZ","ZHToTauTau","vbf","WHTT"]
+        irBkg = ["ZZ"]
+        #TrialphaBkg = ["ttZ","ttW","WWZ","WZZ","ZZZ","WWW_4F","HZJ"]
+        TrialphaBkg = ["ttZ","WWZ","WZZ","ZZZ","HZJ"]
+        #rareBkg = ["Other","rare","WZ"]
+        rareBkg = ["Other"]
+        finalDistributions = {}
         finalDistributions["Bkg"]=Bkg
+        finalDistributions["data_obs"]=["data_obs"]
+        finalDistributions["SS_relaxed_data"]=["SS_relaxed_data"]
+        finalDistributions["a15"]=["a15"]
+        finalDistributions["a20"]=["a20"]
+        finalDistributions["a25"]=["a25"]
+        finalDistributions["a30"]=["a30"]
+        finalDistributions["a35"]=["a35"]
+        finalDistributions["a40"]=["a40"]
+        finalDistributions["a45"]=["a45"]
+        finalDistributions["a50"]=["a50"]
+        finalDistributions["a55"]=["a55"]
+        finalDistributions["a60"]=["a60"]
+        finalDistributions["irBkg"]=irBkg
+        finalDistributions["TrialphaBkg"]=TrialphaBkg
         finalDistributions["rareBkg"]=rareBkg
+        if args.datameasure:
+            finalDistributions["prompt1"]=["prompt1"]
+            finalDistributions["prompt2"]=["prompt2"]
+        if args.datadrivenHAA or args.datadrivenSM:
+            Bkg = ["FF"]
+            #rareBkg = ["DY","W","TT","ST","EWK","Other","rare","WZ"]
+            finalDistributions["Bkg"]=Bkg
+            #finalDistributions["rareBkg"]=rareBkg
+    else: #only data
+        finalDistributions = {}
+        finalDistributions["data_obs"]=["data_obs"]
+        Bkg = ["FF"]
+        finalDistributions["Bkg"]=Bkg
 
     allSkims = {}
     finalSkims ={}
@@ -744,133 +930,26 @@ def initialize(args):
     datadrivenPackage={}
     datadrivenPackage["bool"]=False
 
-
-    if args.datadrivenZH or args.makeFakeHistos:
-        print "MUST HAVE CREATED FF DISTRIBUTIONS BEFORE!"
-        histodict = {}
-        #inputFFile = ROOT.TFile.Open("FFskim_"+str(args.ffin)+".root","read")
-        with uproot.open("skimmed_"+str(args.ffin)+".root") as inputFFile:
-            histodict = createFakeFactorHistos(allcats, inputFFile)
-        #inputFFile.Close()
-        datadrivenPackage={}
-        datadrivenPackage["bool"]=args.datadrivenZH
-        fakemeasurefile = ROOT.TFile.Open("FFhistos_"+str(args.ffin)+"/fakemeasure.root","RECREATE")
-        fakemeasurefile.cd()
-        #ff_file_3 = ROOT.TFile.Open("FFhistos_"+str(args.ffin)+"/pt_3_ff.root","read")
-        #ff_file_4 = ROOT.TFile.Open("FFhistos_"+str(args.ffin)+"/pt_4_ff.root","read")
-
-        # ss_1_tight = ff_file_3.Get(args.channel+"_FF_SS_1_tight/data_obs")
-        # ss_1_loose = ff_file_3.Get(args.channel+"_FF_SS_1_loose/data_obs")
-        # ss_2_tight = ff_file_4.Get(args.channel+"_FF_SS_2_tight/data_obs")
-        # ss_2_loose = ff_file_4.Get(args.channel+"_FF_SS_2_loose/data_obs")
-
-        ss_1_tight = histodict[args.channel+"_FF_SS_1_tight"]["Nominal_data_obs"]["pt_3_ff"]
-        ss_1_loose = histodict[args.channel+"_FF_SS_1_loose"]["Nominal_data_obs"]["pt_3_ff"]
-        ss_2_tight = histodict[args.channel+"_FF_SS_2_tight"]["Nominal_data_obs"]["pt_4_ff"]
-        ss_2_loose = histodict[args.channel+"_FF_SS_2_loose"]["Nominal_data_obs"]["pt_4_ff"]
-
-        # ss_1_tight_prompt = ff_file_3.Get(args.channel+"_FF_SS_1_tight/prompt1")
-        # ss_1_loose_prompt = ff_file_3.Get(args.channel+"_FF_SS_1_loose/prompt1")
-        # ss_2_tight_prompt = ff_file_4.Get(args.channel+"_FF_SS_2_tight/prompt2")
-        # ss_2_loose_prompt = ff_file_4.Get(args.channel+"_FF_SS_2_loose/prompt2")
-
-        ss_1_tight_prompt = histodict[args.channel+"_FF_SS_1_tight"]["Nominal_prompt1"]["pt_3_ff"]
-        ss_1_loose_prompt = histodict[args.channel+"_FF_SS_1_loose"]["Nominal_prompt1"]["pt_3_ff"]
-        ss_2_tight_prompt = histodict[args.channel+"_FF_SS_2_tight"]["Nominal_prompt2"]["pt_4_ff"]
-        ss_2_loose_prompt = histodict[args.channel+"_FF_SS_2_loose"]["Nominal_prompt2"]["pt_4_ff"]
-
-        #subtracting prompt MC execpt for low stat channel
-        # if args.channel!="mmem":
-        ss_1_tight.Write("ss_1_tight",ROOT.TObject.kOverwrite)
-        ss_1_loose.Write("ss_1_loose",ROOT.TObject.kOverwrite)
-        ss_2_tight.Write("ss_2_tight",ROOT.TObject.kOverwrite)
-        ss_2_loose.Write("ss_2_loose",ROOT.TObject.kOverwrite)
-
-
-        # ss_1_tight_prompt.Sumw2()
-        # ss_1_loose_prompt.Sumw2()
-        # ss_2_tight_prompt.Sumw2()
-        # ss_2_loose_prompt.Sumw2()
-
-
-        ss_1_tight.Add(ss_1_tight_prompt,-1)
-        ss_2_tight.Add(ss_2_tight_prompt,-1)
-        ss_1_loose.Add(ss_1_loose_prompt,-1)
-        ss_2_loose.Add(ss_2_loose_prompt,-1)
-
-        # ss_1_tight.Sumw2()
-        # ss_2_tight.Sumw2()
-        # ss_1_loose.Sumw2()
-        # ss_2_loose.Sumw2()
-
-
-
-
-        f_1= ss_1_tight.Clone()
-        f_1.Divide(ss_1_loose)
-        f_2 = ss_2_tight.Clone()
-        f_2.Divide(ss_2_loose)
-
-        f_1.GetYaxis().SetTitleOffset(1.4)
-        f_2.GetYaxis().SetTitleOffset(1.4)
-        f_1.GetYaxis().SetMaxDigits(2)
-        f_2.GetYaxis().SetMaxDigits(2)
-        #ROOT.TGaxis().SetMaxDigits(2)
-
-        f_1.SetName(args.channel+"_FakeRateLeg1")
-        f_1.SetTitle(args.channel+" Fake Rate Measurement Leg1")
-        f_1.GetXaxis().SetTitle("p_T Leg1")
-        f_1.GetYaxis().SetTitle("Fake Rate for Leg1")
-        f_2.SetName(args.channel+"_FakeRateLeg2")
-        f_2.SetTitle(args.channel+" Fake Rate Measurement Leg2")
-        f_2.GetXaxis().SetTitle("p_T Leg2")
-        f_2.GetYaxis().SetTitle("Fake Rate for Leg2")
-
-        tf_1 = ROOT.TF1("tf_1","[0]",f_1.GetXaxis().GetXmin(),f_1.GetXaxis().GetXmax())
-        tf_2 = ROOT.TF1("tf_2","[0]",f_2.GetXaxis().GetXmin(),f_2.GetXaxis().GetXmax())
-
-        c=ROOT.TCanvas("canvas","",0,0,600,600)
-        #ROOT.gStyle.SetOptFit()
-        ROOT.gStyle.SetOptStat(0)
-        #ROOT.gStyle.SetOptFit(1)
-        f_1.Draw()
-        f_1.Fit("tf_1")
-        c.SaveAs("FFhistos_"+str(args.ffin)+"/"+args.channel+"_fakerate1.png")
-        f_2.Draw()
-        f_2.Fit("tf_2")
-        c.SaveAs("FFhistos_"+str(args.ffin)+"/"+args.channel+"_fakerate2.png")
-        tf_1.Write(tf_1.GetName(),ROOT.TObject.kOverwrite)
-        tf_2.Write(tf_2.GetName(),ROOT.TObject.kOverwrite)
-        f_1.Write(f_1.GetName(),ROOT.TObject.kOverwrite)
-        f_2.Write(f_2.GetName(),ROOT.TObject.kOverwrite)
-
-        ss_1_tight.Write("ss_1_tight_sub",ROOT.TObject.kOverwrite)
-        ss_1_loose.Write("ss_1_loose_sub",ROOT.TObject.kOverwrite)
-        ss_2_tight.Write("ss_2_tight_sub",ROOT.TObject.kOverwrite)
-        ss_2_loose.Write("ss_2_loose_sub",ROOT.TObject.kOverwrite)
-        ss_1_tight_prompt.Write("ss_1_tight_prompt",ROOT.TObject.kOverwrite)
-        ss_1_loose_prompt.Write("ss_1_loose_prompt",ROOT.TObject.kOverwrite)
-        ss_2_tight_prompt.Write("ss_2_tight_prompt",ROOT.TObject.kOverwrite)
-        ss_2_loose_prompt.Write("ss_2_loose_prompt",ROOT.TObject.kOverwrite)
-
-
-
-
-        datadrivenPackage["fakerate1"]=f_1.Clone()
-        datadrivenPackage["fakerate2"]=f_2.Clone()
-        datadrivenPackage["fitrate1"]=tf_1
-        datadrivenPackage["fitrate2"]=tf_2
-        datadrivenPackage["fakemeasurefile"]=fakemeasurefile
-        #fakemeasurefile.Close()
-
-    #EventWeights = getEventWeightDicitonary()
-    #importing special fake factor class from parametrization
     fakefactorObj= fakefactor()
     if args.datadrivenSM:
         #fakefactorObj = fakefactor("/eos/home-s/shigginb/fakefactor/")
         #fakefactorObj.loadHistograms("/eos/home-s/shigginb/fakefactors/",args.year)
         fakefactorObj.loadHistograms("./fakefactors/",args.year)
         #fakefactorObj.Print()
+    if args.datadrivenHAA:
+        datadrivenPackage={}
+        datadrivenPackage["bool"]=args.datadrivenHAA
+        fakemeasurefile_1 = ROOT.TFile.Open(str(args.ffin1),"READ")
+        fakemeasurefile_1.cd()
+        datadrivenPackage["fakerate1"]=fakemeasurefile_1.Get("fakerate1")
+        datadrivenPackage["fitrate1"]=fakemeasurefile_1.Get("tf_1")
+
+        fakemeasurefile_2 = ROOT.TFile.Open(str(args.ffin2),"READ")
+        fakemeasurefile_2.cd()
+        datadrivenPackage["fakerate2"]=fakemeasurefile_2.Get("fakerate1") 
+        datadrivenPackage["fitrate2"]=fakemeasurefile_2.Get("tf_1")
+        datadrivenPackage["file1"] = fakemeasurefile_1
+        datadrivenPackage["file2"] = fakemeasurefile_2
 
     #exit()
     # ROOT.fail
@@ -892,6 +971,7 @@ def fstar(args):
 
 def slimskimstar(args):
     #return slimskim(*args)
+    print("in slimskimstar")
     return slimskimoutput(*args)
 
 def f(process, categories):
@@ -901,9 +981,12 @@ def f(process, categories):
         #print("category ",cat)
     return 1
 
-def createFakeFactorHistos(allcats, inputFFile):
+def createFakeFactorHistos(allcats, inputFFile,promptsub):
     newVarVals={}
-    treetypes = ["Nominal_data_obs","Nominal_prompt1","Nominal_prompt2"]
+    if promptsub:
+        treetypes = ["Nominal_data_obs","Nominal_prompt1","Nominal_prompt2"]
+    else:
+        treetypes = ["Nominal_data_obs"]
     # for cat in allcats.keys():
     #     if not "_inclusive" in cat:
     #         histodict={}
@@ -916,25 +999,25 @@ def createFakeFactorHistos(allcats, inputFFile):
 
     #creating the Fake Factor histograms from pre-defined numpy arrays
     for cat in histodict.keys():
-        print cat
+        #print cat
         if "inclusive" in cat: continue
         for treename in treetypes:
             tree = inputFFile[cat][treename]
             fakefactorArray = tree.arrays()
-            print "cats ",cat,"  tree name ",treename
-            print "entries ",len(fakefactorArray["finalweight"])
+            #print "cats ",cat,"  tree name ",treename
+            #print "entries ",len(fakefactorArray["finalweight"])
             #vars = fakefactorArray.keys()
             vars = allcats[cat].vars
             for variableHandle in vars:
                 #print variableHandle
                 var = allcats[cat].vars[variableHandle][0]
                 #var = variableHandle
-                print var,"  ",variableHandle
+                #print var,"  ",variableHandle
                 if "jpt" in variableHandle and "ff" in variableHandle:
                     firstnum = variableHandle.split("_")[1]
                     secondnum = str(int(firstnum)-1)
                     var = variableHandle+"_"+secondnum
-                    print var
+                    #print var
                 bins = allcats[cat].vars[variableHandle][1]
                 if type(bins[0])==list:
                     histodict[cat][treename][variableHandle] = ROOT.TH1D(str(variableHandle),str(variableHandle),bins[0][0],bins[0][1],bins[0][2])
@@ -965,13 +1048,14 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
     from ROOT import gInterpreter
     import copy
     commonweight = CommonWeights["lumi"+args.year][0]
-    skimArrayPerCat = {}
     print "working on process obj ",processObj.nickname
 
+    skimArrayPerCat = {}
     for process in processObj.cuts.keys():
-        procut = processObj.cuts[process]
+        procuts = processObj.cuts[process]
         #print "working on process ",process
         for cat in allcats.keys():
+            skimArray={}
             masterArray = inputArray.copy()
             cuts=[]
             #print "working on category ",cat
@@ -981,18 +1065,19 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
             for cuttype in allcats[cat].cuts.keys():
                 for cut in allcats[cat].cuts[cuttype]:
                     cuts.append(cut)
-            if procut!="":
-                cuts.append(procut[0])
+            if procuts!="":
+                for pc in procuts:
+                    cuts.append(pc)
             if args.extract and args.channel=="mmmt":
                 cuts.append(["AMass","<=",120.0])
                 cuts.append(["mll-mtt",">",0.0])
             elif args.extract and args.channel=="mmtt":
-                if args.year=="2016":
-                    cuts.append(["AMass","<=",135.0])
-                    cuts.append(["mll-mtt",">",0.0])
-                else:
-                    cuts.append(["AMass","<=",130.0])
-                    cuts.append(["mll-mtt",">",0.0])
+                cuts.append(["AMass","<=",135.0])
+                cuts.append(["mll-mtt",">",0.0])
+                #if args.year=="2016":
+                #else:
+                #    cuts.append(["AMass","<=",130.0])
+                #    cuts.append(["mll-mtt",">",0.0])
             elif args.extract and args.channel=="mmet":
                 cuts.append(["AMass","<=",120.0])
                 cuts.append(["mll-mtt",">",0.0])
@@ -1036,16 +1121,10 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
             masterArray["nickname"]=masterArray["nickname"].astype("S40")
             #print masterArray["nickname"]
 
-            if process=="data_obs":
+            if (process=="data_obs"):
                 masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
 
-                #Comments with Dylan!
-                #move this out of the loop! :)
-                #perhaps combine the category and process object
-                #for the skimArray[] = skimArray return ... write function to get the key?
-
-
-
+                print(cuts)
                 mask = cutOnArray(masterArray,cuts)
                 masterArray["mask"]=mask
                 masterArray["finalweight"] *= mask.astype(int)
@@ -1062,18 +1141,47 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                         #print "skipping branch ",key
                         continue
                 #print("after skim", len(skimArray["mll"]), processObj.file)
-                if len(skimArray["mll"])==0:
-                    continue
+                print("cat ",cat,"  events ",len(skimArray["mll"]))
+                #if len(skimArray["mll"])==0:
+                #    continue
+                print("data obs","  ",cat," events ",len(masterArray["finalweight"])," data finalyield ",np.sum(masterArray["finalweight"]))
 
                 for key in skimArray.keys():
                     if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
 
+            if (process=="SS_relaxed_data"):
+                masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
+                #print("events before cuts",len(masterArray["evt"]))
+                cuts = HAA_processes["SS_relaxed_data"].cuts["SS_relaxed_data"]
+                mask = cutOnArray(masterArray,cuts)
+                masterArray["mask"]=mask
+                masterArray["finalweight"] *= mask.astype(int)
+                weightfinal = 1.0   #don't weight the data!!
 
+                skipEvents = np.where(mask==0)[0]
+                skimArray={}
+                for key in masterArray.keys():
+                    try:
+                        skimArray[key] = masterArray[key][mask]
+                    except:
+                        continue
+                if len(skimArray["mll"])==0:
+                    continue
 
+                for key in skimArray.keys():
+                    if key not in plottedVars and key != "finalweight" and key != "evt":
+                        del skimArray[key]
+                #print("events after cuts",len(skimArray["mll"]))
+                print("SS relaxed ","  ",cat," events ",len(masterArray["finalweight"])," data finalyield ",np.sum(masterArray["finalweight"]))
+                skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
 
-            if(process=="FF" and datadrivenPackage["bool"] and args.datadrivenZH):
+            
+
+            if(process=="FF" and datadrivenPackage["bool"] and args.datadrivenHAA):
+                print("running FF")
+                skimArray={}
                 masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
 
 
@@ -1122,29 +1230,44 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
                 #FF_1
                 #causal catching ... the pt may be outside the shape from the histogram... if so we need the constant fit value for extrapolation
-                #fitmask_1 = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
-                #fitmask_1 = fitmask_1.astype(int)
-                ptarr_1 = masterArray["pt_3"]
+                print("using fake rates ",datadrivenPackage.keys())
+                fitmask_1 = cutOnArray(masterArray,[["pt_3","<",datadrivenPackage["fakerate1"].GetBinLowEdge(datadrivenPackage["fakerate1"].GetNbinsX())],["pt_3",">",datadrivenPackage["fakerate1"].GetBinLowEdge(2)]])
+                fitmask_1 = fitmask_1.astype(int)
 
+                ptarr_1 = masterArray["pt_3"]
                 ffweight_1 = ptFun(datadrivenPackage["fakerate1"],ptarr_1)
+                ffweight_1[fitmask_1]=datadrivenPackage["fitrate1"].GetParameter(0)
                 ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
-                #ffweight_1 = np.ones(len(ffweight_1))*(0.153/(1-0.153))
+
+                #by single value
+                #ffweight_1 = np.ones(len(tempmask_1))*(0.03/(1-0.03))
+                #ff measured as T/L(including tight)
+                #print("loading fit parms")
                 #ffweight_1 = np.ones(len(tempmask_1))*(datadrivenPackage["fitrate1"].GetParameter(0)/(1-datadrivenPackage["fitrate1"].GetParameter(0)))
 
+                #ff measured as T/L(excluding tight)
+                #ffweight_1 = np.ones(len(tempmask_1))*datadrivenPackage["fitrate1"].GetParameter(0)
 
 
                 #FF_2
-                #fitmask_2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
-                #fitmask_2 = fitmask_2.astype(int)
-                ptarr_2 = masterArray["pt_4"]
+                fitmask_2 = cutOnArray(masterArray,[["pt_4","<",datadrivenPackage["fakerate2"].GetBinLowEdge(datadrivenPackage["fakerate2"].GetNbinsX())],["pt_4",">",datadrivenPackage["fakerate2"].GetBinLowEdge(2)]])
+                fitmask_2 = fitmask_2.astype(int)
 
+                ptarr_2 = masterArray["pt_4"]
                 ffweight_2 = ptFun(datadrivenPackage["fakerate2"],ptarr_2)
+                ffweight_2[fitmask_2]=datadrivenPackage["fitrate2"].GetParameter(0)
                 ffweight_2 = ffweight_2/(1.0000000001 - ffweight_2)
-                #ffweight_2 = np.ones(len(ffweight_2))*(0.153/(1-0.153))
+
+                #by single value
+                #ffweight_2 = np.ones(len(tempmask_2))*(0.13/(1-0.13))
+                #ff measured as T/L(including tight)
                 #ffweight_2 = np.ones(len(tempmask_2))*(datadrivenPackage["fitrate2"].GetParameter(0)/(1-datadrivenPackage["fitrate2"].GetParameter(0)))
 
+                #ff measured as T/L(excluding tight)
+                #ffweight_2 = np.ones(len(tempmask_2))*datadrivenPackage["fitrate2"].GetParameter(0)
 
                 ffweight = -1.0 * ffweight_1 * ffweight_2
+                #ffweight = ffweight_1 * ffweight_2
 
                 #replace 0s with constant fit value
                 #ffweight_1 *= fitmask_1
@@ -1180,25 +1303,30 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
 
                 masterArray["finalweight"] *= finalWeight
-                #print "summed final weight ",np.sum(finalWeight)
+                print("f1 contribution ",np.sum(tempmask_1),np.sum(ffweight_1))
+                print("f2 contribution ",np.sum(tempmask_2),np.sum(ffweight_2))
+                print("f12 contribution ",np.sum(tempmask_12),np.sum(ffweight))
+                print("summed final weight ",np.sum(finalWeight))
 
-                keepEvents = ~np.where(finalWeight==0.0)[0]
+                keepEvents = np.where(finalWeight!=0.0)[0]
 
                 skimArray={}
                 for key in masterArray.keys():
                     skimArray[key] = masterArray[key][keepEvents]
 
                 #print("after skim", len(skimArray["mll"]), processObj.file)
-                if len(skimArray["mll"])==0:
-                    continue
+                #if len(skimArray["mll"])==0:
+                #    continue
 
                 for key in skimArray.keys():
                     if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 #return skimArray
+                print("FF","  ",cat," events ",len(masterArray["finalweight"])," data finalyield ",np.sum(masterArray["finalweight"]))
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
 
             if(process=="FF" and (args.datadrivenSM)):
+                skimArray={}
                 masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
                 tempmask=np.full(len(masterArray["evt"]),1.0)
                 #the actual events that pass the FF_1 criteria
@@ -1242,16 +1370,17 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
 
                 ffhistosmask_1, ffhistosmask_2 = fakefactorObj.getHistoMask(args.channel,processObj,masterArray)
-                print ffhistosmask_2[:1000]
+                #print ffhistosmask_2[:1000]
 
                 ffweight_1,ffweight_2 = fakefactorObj.getFakeWeight(args.channel,ptarr_1,ptarr_2,ffhistosmask_1,ffhistosmask_2)
-                print "ffweight_1 ",ffweight_1
-                print "ffweight_2 ",ffweight_2
+                #print "ffweight_1 ",ffweight_1
+                #print "ffweight_2 ",ffweight_2
                 #exit()
                 ffweight_1 = ffweight_1/(1.0000000001 - ffweight_1)
                 ffweight_2 = ffweight_2/(1.0000000001 - ffweight_2)
 
-                ffweight = -1.0 * ffweight_1 * ffweight_2
+                #ffweight = -1.0 * ffweight_1 * ffweight_2
+                ffweight = ffweight_1 * ffweight_2
                 #for standar model measurement may not need the "-"
                 #ffweight = 1.0 * ffweight_1 * ffweight_2
 
@@ -1263,7 +1392,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
 
                 #masterArray["finalweight"] *= finalWeight
-                print "final weight after ",finalWeight[finalWeight>0]
+                #print "final weight after ",finalWeight[finalWeight>0]
                 masterArray["finalweight"] = finalWeight
                 #print "summed final weight ",np.sum(finalWeight)
 
@@ -1275,19 +1404,26 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 #skipEvents = np.where(mask==0)[0]
                 mask = cutOnArray(masterArray,[["finalweight","!=",0.]])
                 masterArray["mask"]=mask
-                print mask[:1000]
+                #print mask[:1000]
 
                 skimArray={}
+
                 for key in masterArray.keys():
                     #skimArray[key] = masterArray[key][keepEvents]
                     #skimArray[key] = masterArray[key][keepEvents]
                     skimArray[key] = masterArray[key][mask]
                     #skimArray[key] = masterArray[key][finalWeight>0]
 
+                #print("MC before cuts ",len(masterArray["finalweight"]))
+                #for key,value in masterArray.iteritems():
+                #    if len(mask)==len(value):
+                #        masterArray[key] = value[mask]
+                #print("MC after cuts ",len(masterArray["finalweight"]))
+
                 #print("after skim", len(skimArray["mll"]), processObj.file)
-                print "final weight after removing o's  \n",masterArray["finalweight"]
-                print "final weight after removing o's  \n",skimArray["finalweight"]
-                print "final weight specfiic after removing o's  \n",skimArray["finalweight"]
+                #print "final weight after removing o's  \n",masterArray["finalweight"]
+                #print "final weight after removing o's  \n",skimArray["finalweight"]
+                #print "final weight specfiic after removing o's  \n",skimArray["finalweight"]
                 if len(skimArray["mll"])==0:
                     continue
 
@@ -1295,13 +1431,14 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                     if key not in plottedVars and key != "finalweight" and key != "evt":
                         del skimArray[key]
                 #return skimArray
+                print("data obs","  ",cat," events ",len(masterArray["finalweight"])," data finalyield ",np.sum(masterArray["finalweight"]))
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
-                print "done with SM FF"
+                #print "done with SM FF"
 
-
-
-
-            if process not in ["data_obs","FF","FF_1","FF_2","FF_12"]:
+            if process not in ["data_obs","FF","FF_1","FF_2","FF_12","SS_relaxed_data"]:
+                #if (args.datadrivenHAA and (args.channel=="mmmt" or args.channel=="mmet")):
+                #         cuts.append(["gen_match_3","!=",0])
+                #         cuts.append(["gen_match_4","!=",0])
                 EventWeights = getEventWeightDicitonary(args.year)
 
                 masterArray['finalweight']=np.full(len(masterArray['evt']),1.0)
@@ -1311,6 +1448,15 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 masterArray["mask"]=mask
                 masterArray["finalweight"] *= mask.astype(int)
                 weightfinal = 1.0   #don't weight the data!!
+
+                #for key,value in masterArray.iteritems():
+                #        masterArray[key] = masterArray[key][mask]
+
+                #print("MC before cuts ",len(masterArray["finalweight"]))
+                #for key,value in masterArray.iteritems():
+                #    #if len(mask)==len(value):
+                #    masterArray[key] = value[mask]
+                #print("MC after cuts ",len(masterArray["finalweight"]))
 
                 skipEvents = np.where(mask==0)[0]
                 skimArray={}
@@ -1323,8 +1469,11 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 for scalefactor in weightDict.keys():
                     if scalefactor == "kfactor":
                         weightfinal =  weightfinal * (1 / float(weightDict[scalefactor]))
-                    elif scalefactor in ["PU","genweight"]:
+                    #elif scalefactor in ["PU","genweight"]:
+                    elif scalefactor in ["genweight"]:
                         masterArray["finalweight"] *= (returnArray(masterArray,weightDict[scalefactor]))
+                    elif scalefactor == "PU": # calculating the pileup myself
+                        masterArray["finalweight"] *= getPUfactor(masterArray)
                     elif scalefactor =="theoryXsec":
                         weightfinal =  weightfinal * float(weightDict[scalefactor])
 
@@ -1373,7 +1522,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                         masterArray["finalweight"] [njetmask] *= weight
                         #print "events that pass ",i_jet," jets ",np.count_nonzero(masterArray["finalweight"] [njetmask])
 
-                    print "jet weight array ",jetweights
+                    #print "jet weight array ",jetweights
                     #print  " sample name ",nickname,"xsec ",HAA_processes[nickname].weights["xsec"]," events that pass ", np.count_nonzero(masterArray["finalweight"])
                 elif not type(weightHistoDict[nickname])==list:
                 #else: #Will the run separate from the NJet cases?
@@ -1384,7 +1533,7 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                         for ext in extensions:
                          #sum sow from all versions of this process.
                             if nickname.replace(ext,"")==nic or nic.replace(ext,"")==nickname:
-                                print "adding ",nickname,"   to   ",nic
+                                #print "adding ",nickname,"   to   ",nic
                                 sumOfWeights += sowhist.GetSumOfWeights()
                                 break
 
@@ -1394,7 +1543,6 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
 
                     if sumOfWeights != 0.0:
                         weightfinal = weightfinal * HAA_processes[nickname].weights["xsec"]/ sumOfWeights
-                        print "nickname ",nickname," xsec/SoW ",HAA_processes[nickname].weights["xsec"]/ sumOfWeights
 
                 masterArray["finalweight"] *= weightfinal
 
@@ -1438,15 +1586,25 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 #print "summed final weight ",np.sum(masterArray["finalweight"])
                 #print " scalar weightfinal ",weightfinal
                 #if len(np.where(masterArray["evt"]==161352765)[0])>0:
+                try:
+                    print(nickname,"  ",cat," events ",len(masterArray["finalweight"]), " xsecXlumi/SoW ",HAA_processes[nickname].weights["xsec"]*commonweight/ sumOfWeights," finalyield ",np.sum(masterArray["finalweight"]))
+                except:
+                    print(nickname,"  ",cat," events ",len(masterArray["finalweight"])," finalyield ",np.sum(masterArray["finalweight"]))
                 if 161352765 in masterArray["evt"]:
                      print "final weight weird ",systematic+":"+cat+":"+processObj.nickname+":"+process
                      print "event ",masterArray["evt"][np.where(masterArray["evt"]==161352765)[0]]
 
                 #print("before skim", len(masterArray["finalweight"]))
+                #for key,value in masterArray.iteritems():
+                #    if ( key in plottedVars or key == "finalweight" or key=="evt") \
+                #        and (len(mask)==len(value)):
+                #        skimArray[key] = value[mask]
                 for key,value in masterArray.iteritems():
                     if ( key in plottedVars or key == "finalweight" or key=="evt") \
                         and (len(mask)==len(value)):
                         skimArray[key] = value[mask]
+                    #if ( key in plottedVars or key == "finalweight" or key=="evt"):
+                    #    skimArray[key] = value
 
 
                 # del1 = np.where(skimArray["finalweight"]<-30000.0)
@@ -1458,8 +1616,109 @@ def makeCutsOnTreeArray(processObj, inputArray,allcats,weightHistoDict,systemati
                 skimArrayPerCat[systematic+":"+cat+":"+processObj.nickname+":"+process] = skimArray
     #exit()
     return skimArrayPerCat
+            #End of cat loop
+        #end of process loop?
+            #if process in ["FF_1","FF_2","FF_12"]: continue # rigging the FF multiple processes don't write out empty ones 
+            #filename = systematic+"_"+cat+"_"+processObj.nickname+"_"+process
+            #print("writing output file: ",filename)
+            #try:
+            #    os.mkdir("massOutputDir_"+args.outname)
+            #except:
+            #    pass
+            #dataTypes =[[],[]]
+            #for branch in skimArray.keys():
+            #    dataTypes[0].append(branch)
+            #    dataTypes[1].append(skimArray[branch].dtype)
 
 
+            #randomkey = skimArray.keys()[0]
+            #data = np.zeros(len(skimArray[randomkey]),dtype={'names':dataTypes[0],'formats':dataTypes[1]})
+            #fileout = ROOT.TFile.Open("massOutputDir_"+args.outname+"/"+filename,"recreate")
+            #fileout.cd()
+            #for branch in data.dtype.names:
+            #    if len(skimArray[branch].shape) == 1:   # flat array important for jagged arrays of input data
+            #        data[branch] = skimArray[branch]
+            #    else:
+            #        data[branch] = skimArray[branch][:,0]
+
+            #root_numpy.array2tree(data,name=filename)
+            #fileout.Write()
+            #fileout.Close()
+            #del data
+            #del fileout
+            #del dataTypes
+    #return skimArrayPerCat
+    #return
+
+
+def checkRootFiles(systematics, allcats, processes,
+                     finalDistributions, rootfiledir,
+                     channel, outputstring):
+   import os
+   import glob
+   import uproot
+   import awkward as ak
+   rootFiles = {}
+   #print "the final distributions ",finalDistributions
+   #cat = "mmmt_inclusive"
+   finalSkims={}
+   import shutil
+   #list comprehension example:
+   try:
+       systematics[systematics.index("Events")]="Nominal"
+   except:
+       print "events tree not present"
+   print"checking root files for sytematics ",systematics
+   finalSkims = {s:{c: dict() for c in allcats.keys()} for s in systematics}
+
+
+   rootFiles={sys:glob.glob(rootfiledir+"/"+sys+"_*") for sys in systematics}
+
+
+   mainTList = {}
+   mainOutputTree={}
+   emptyFiles={}
+   nonemptyFiles={}
+   #for sys, globfiles in rootFiles.iteritems():
+   #   for globfile in globfiles:
+   #      #print "working on glob ",globfile,"  size   ",os.path.getsize(globfile) 
+   #      for cat,catObj in allcats.iteritems():
+   #         for nickname, processObj in processes.iteritems():
+   #             for process in processObj.cuts.keys():
+   #                 if str(globfile).split("/")[1]==sys+"_"+cat+"_"+nickname+"_"+process:
+   #                     #print "found match ",sys+"_"+cat+"_"+nickname+"_"+process
+   #                     fin = uproot.open(globfile)
+   #                     if len(fin[sys+"_"+cat+"_"+nickname+"_"+process].keys())==12:
+   #                         nonemptyFiles[sys+":"+cat+":"+nickname+":"+process] = processObj
+   #                     else: 
+   #                         emptyFiles[sys+":"+cat+":"+nickname+":"+process] = processObj
+   resub=[]
+   for sys in systematics:
+       for cat,catObj in allcats.iteritems():
+           for nickname, processObj in processes.iteritems():
+               for process in processObj.cuts.keys():
+                   for sys, globfiles in rootFiles.iteritems():
+                       found = 0
+                       for globfile in globfiles:
+                           if str(globfile).split("/")[1]==sys+"_"+cat+"_"+nickname+"_"+process:
+                               found=1
+                               fin = uproot.open(globfile)
+                               #checking to see if there are output branches if so ... I assume it ran
+                               if len(fin[sys+"_"+cat+"_"+nickname+"_"+process].keys())>2:
+                                   nonemptyFiles[sys+":"+cat+":"+nickname+":"+process] = processObj
+                               else: 
+                                   emptyFiles[sys+":"+cat+":"+nickname+":"+process] = processObj
+                                   resub.append(sys+":"+cat+":"+nickname+":"+process+"\n")
+                       if not found:
+                           emptyFiles[sys+":"+cat+":"+nickname+":"+process] = processObj
+                           resub.append(sys+":"+cat+":"+nickname+":"+process+"\n")
+
+                            
+                        
+
+
+   open("missingOutputFiles_"+args.channel+"_"+args.year+"_"+args.outname+".sh",'w').writelines(resub)
+   return nonemptyFiles,emptyFiles
 
 def slimskim(process,allcats,weightHistoDict,systematic):
 
@@ -1493,9 +1752,8 @@ def slimskim(process,allcats,weightHistoDict,systematic):
 def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args):
 
     skimArrayPerSysCats={}
-    #print "working on systematic ",systematic
+    print "working on systematic ",systematic," opening file ",process.file
     work_dict = {}
-    #fin = uproot.open(process.file)
     with uproot.open(process.file) as fin:
         try:
            tree = fin[systematic]
@@ -1508,8 +1766,10 @@ def slimskimoutput(process,allcats,weightHistoDict,systematic,massoutputdir,data
             work_dict.update(fin[systematic].arrays(list(syst_names)))
             work_dict.update(fin["Events"].arrays(list(nom_names)))
             skimArrayPerSysCats.update(makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic,jetWeightMultiplicity,fakefactorObj,args))
+            #makeCutsOnTreeArray(process,work_dict,allcats,weightHistoDict,systematic,jetWeightMultiplicity,fakefactorObj,args)
         else:
             skimArrayPerSysCats.update(makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal",jetWeightMultiplicity,fakefactorObj,args))
+            #makeCutsOnTreeArray(process,tree.arrays(),allcats,weightHistoDict,"Nominal",jetWeightMultiplicity,fakefactorObj,args)
 
 
         createSlimOutput(skimArrayPerSysCats,massoutputdir)
@@ -1529,9 +1789,9 @@ def createSlimOutput(skimArrayPerSysCats,outputdir):
    for key,dictionary in skimArrayPerSysCats.iteritems():
       dataTypes =[[],[]]
       for branch in dictionary.keys():
-          if branch=="nickname":
-              print branch
-              print dictionary[branch].dtype
+          #if branch=="nickname":
+              #print branch
+              #print dictionary[branch].dtype
           dataTypes[0].append(branch)
           dataTypes[1].append(dictionary[branch].dtype)
 
@@ -1573,6 +1833,7 @@ def combineRootFiles(systematics, allcats, processes,
    finalSkims={}
    import shutil
    #list comprehension example:
+   print("combining files for systematics ",systematics)
    try:
        systematics[systematics.index("Events")]="Nominal"
    except:
@@ -1639,6 +1900,7 @@ def combineRootFiles(systematics, allcats, processes,
        skimFile.mkdir(cat)
        skimFile.cd(cat)
        for sys in finalSkims.keys():
+           #print "systematic ",sys
            dataTypes =[[],[]]
            #print finalSkims[sys][cat].values()
            #print "combining ",sys, " cat ",cat
@@ -1690,6 +1952,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="This file generates root files containing Histograms ... files in utils contain selections and settings")
     parser.add_argument("-o",  "--outname", default="",  help="postfix string")
     parser.add_argument("-fi",  "--ffin", default="",  help="fake factor files")
+    parser.add_argument("-fi1",  "--ffin1", default="",  help="fake factor split to leg 1")
+    parser.add_argument("-fi2",  "--ffin2", default="",  help="fake factor split to leg 2")
     parser.add_argument("-year",  "--year", default="2016",  help="Year")
     parser.add_argument("-fo",  "--ffout", default="",  help="fake factor files to output")
     parser.add_argument("-c",  "--categories", default="categories_array.yaml",  help="categories yaml file")
@@ -1698,10 +1962,12 @@ if __name__ == "__main__":
     parser.add_argument("-i",  "--dir", default="/afs/cern.ch/work/s/shigginb/cmssw/HAA/nanov7_basic_10_6_4/src/2016_v7/",  help="Input files")
     parser.add_argument("-p",  "--processes", default="processes_special.yaml",  help="processes yaml file")
     parser.add_argument("-dm",  "--datameasure", default=False,action='store_true',  help="Use DataDriven Method measure part")
-    parser.add_argument("-dmZH",  "--datameasureZH", default=False,action='store_true',  help="Use DataDriven Method measure part")
+    parser.add_argument("-ps",  "--promptsub", default=False,action='store_true',  help="When making fake rate histograms, subtract the prompt contribution")
+    parser.add_argument("-dmOD",  "--onlydata", default=False,action='store_true',  help="only produced distributions derived from data ntuple.")
     parser.add_argument("-dbg",  "--debug", default=False,action='store_true',  help="Disable the parallel processing mode")
+    parser.add_argument("-rp",  "--runprocesses", default="",  help="run only on selected processes input file csv format or txt ... delimeter is new line")
     parser.add_argument("-sys",  "--systematics", default=False,action='store_true',  help="Run on systematic trees, don't run nominal at the same time")
-    parser.add_argument("-ddZH",  "--datadrivenZH", default=False,action='store_true',  help="Use DataDriven Method")
+    parser.add_argument("-ddHAA",  "--datadrivenHAA", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-ddSM",  "--datadrivenSM", default=False,action='store_true',  help="Use DataDriven Method")
     parser.add_argument("-ex",  "--extract", default=False,action='store_true',  help="Additional Cuts for Extraction")
     parser.add_argument("-ff",  "--makeFakeHistos", default=False,action='store_true',  help="Just make fake rate histos")
@@ -1711,9 +1977,11 @@ if __name__ == "__main__":
     parser.add_argument("-mt",  "--mt", default=False,action='store_true',  help="Use Multithreading")
     parser.add_argument("-pt",  "--maxprint", default=False,action='store_true',  help="Print Info on cats and processes")
     parser.add_argument("-combine",  "--combine", default=False,action='store_true',  help="just combine root files")
+    parser.add_argument("-rr",  "--rerun", default=False,action='store_true',  help="check mass output and run on remaining files")
     parser.add_argument("-pc",  "--processingcores", default=12,type=int,help="Number of cores for multiprocessing")
 
     args = parser.parse_args()
+    print(args)
     allcats={}
     HAA_processes={}
     finalDistributions={}
@@ -1727,7 +1995,6 @@ if __name__ == "__main__":
     allcats,HAA_processes,finalDistributions,\
     weightHistoDict,jetWeightMultiplicity,datadrivenPackage,fakefactorObj = initialize(args)
 
-    print datadrivenPackage
 
     #print(allcats)
     info('main line')
@@ -1743,55 +2010,125 @@ if __name__ == "__main__":
                        "scale_m_eta1p2to2p1Up","scale_m_eta1p2to2p1Down","scale_m_etagt2p1Up","scale_m_etagt2p1Down",
                        "scale_t_1prongUp","scale_t_1prongDown","scale_t_1prong1pizeroUp","scale_t_1prong1pizeroDown",
                        "scale_t_3prongUp","scale_t_3prongDown","scale_t_3prong1pizeroUp","scale_t_3prong1pizeroDown"]
+        #takes too long to run FF closure region on systematics ... come on 
+        allcats.pop(args.channel+"_FF_SS_validation")
     else:
-        systematics =[ "Events"]
+        systematics =["Events"]
     #systematics =[ "Events"]
 
     jet_exc_samples = jet_exc_samples[args.year]
+    nonemptyFiles,emptyFiles=\
+    checkRootFiles(systematics, allcats, HAA_processes,\
+                     finalDistributions, "massOutputDir_"+args.outname,\
+                     args.channel, args.ffout)
 
+    if args.rerun and not args.debug:
+        #nonemptyFiles,emptyFiles=\
+        #checkRootFiles(systematics, allcats, HAA_processes,\
+        #                 finalDistributions, "massOutputDir_"+args.outname,\
+        #                 args.channel, args.ffout)
+        payloads=[]
+        for syscatnickpro in emptyFiles.keys(): 
+            sys = syscatnickpro.split(":")[0]
+            if sys=="Nominal": sys="Events"
+            payloads.append(
+                (emptyFiles[syscatnickpro],allcats,
+                weightHistoDict,sys,
+                "massOutputDir_"+args.outname,
+                 datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
 
-    if not args.combine:
-        for nickname, process in HAA_processes.items():
-            for sys in systematics:
-                payloads.append(
-                    (process,allcats,
-                    weightHistoDict,sys,
-                    "massOutputDir_"+args.outname,
-                     datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
+        print "MAKE SURE ALL CUTS ARE THE SAME"
+        print "empty files ",emptyFiles.keys()
+        #for payload in payloads:
+        #    slimskimstar(payload)
+        m = mp.Manager()
+        logger_q = m.Queue()
+        parallelable_data = [(1, logger_q), (2, logger_q)]
+        pool  = mp.Pool(args.processingcores)
 
-        #print(" PAYLOADS   ",payloads)
+        pool.map(slimskimstar,payloads)
+        pool.close()
+        pool.join()
+            
+    if args.rerun and args.debug:
+        payloads=[]
+        for syscatnickpro in emptyFiles.keys(): 
+            sys = syscatnickpro.split(":")[0]
+            if sys=="Nominal": sys="Events"
+            payloads.append(
+                (emptyFiles[syscatnickpro],allcats,
+                weightHistoDict,sys,
+                "massOutputDir_"+args.outname,
+                 datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
 
-        if not args.debug:
-            m = mp.Manager()
-            logger_q = m.Queue()
-            parallelable_data = [(1, logger_q), (2, logger_q)]
-            pool  = mp.Pool(args.processingcores)
+        print "MAKE SURE ALL CUTS ARE THE SAME"
+        print "empty files ",emptyFiles.keys()
+        for payload in payloads:
+            print "working on payload ", payload[0].nickname
+            slimskimstar(payload)
+    if not args.rerun and not args.runprocesses:
+        if not args.combine:
+            for nickname, process in HAA_processes.items():
+                for sys in systematics:
+                    if sys=="Nominal": sys="Events"
+                    payloads.append(
+                        (process,allcats,
+                        weightHistoDict,sys,
+                        "massOutputDir_"+args.outname,
+                         datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
+            #print(" PAYLOADS   ",payloads)
 
-            pool.map(slimskimstar,payloads)#this works for root output!
-            pool.close()
-            pool.join()
-            #while not logger_q.empty():
-                #print logger_q.get()
-        else:
-            for payload in payloads:
-                print "working on payload ", payload
-                slimskimstar(payload)
+            if not args.debug:
+                m = mp.Manager()
+                logger_q = m.Queue()
+                parallelable_data = [(1, logger_q), (2, logger_q)]
+                pool  = mp.Pool(args.processingcores)
+
+                pool.map(slimskimstar,payloads)
+                pool.close()
+                pool.join()
+                #while not logger_q.empty():
+                    #print logger_q.get()
+            else:
+                for payload in payloads:
+                    print "working on payload ", payload[0].nickname
+                    #if "data" not in payload[0].nickname: continue
+                    #if "FF" not in payload[0].nickname: continue
+                    #print(payload[0].cuts)
+                    #if payload[0].nickname!="SS_relaxed_data": continue
+                    #if payload[0].nickname!="ZZTo4L": continue
+                    slimskimstar(payload)
+        
 
 
         print("root file generation computation time")
         print(datetime.datetime.now() - begin_time)
+    if args.runprocesses:
+        payloads=[]
+        rps=[]
+        for line in open(args.runprocesses,'r').readlines(): rps.append(line.strip())
+        print("running on user input processes ",rps)
+        for nickname, process in HAA_processes.items():
+            if nickname not in rps: continue
+            for sys in systematics:
+                if sys=="Nominal": sys="Events"
+                print("working on file ",process.file)
+                print("working on distributions ",process.cuts.keys())
+                payloads.append(
+                    (process,allcats,
+                    weightHistoDict,sys,
+                    "massOutputDir_"+args.outname,
+                    datadrivenPackage,jetWeightMultiplicity,fakefactorObj,args))
+        for payload in payloads:
+            print "working on payload ", payload[0].nickname
+            slimskimstar(payload)
+            
 
 
-    #print("combining the output")
-    #if createOutput(skims,finalDistributions) : print "successful output"
-    #else: print "ouch ..."
-    #if createOutputSystematics(skims,finalDistributions) : print "successful output"
-    #else: print "ouch ..."
-    print "combining root files"
-
-    if combineRootFiles(systematics, allcats, HAA_processes,
+    if args.combine:
+        combineRootFiles(systematics, allcats, HAA_processes,
                      finalDistributions, "massOutputDir_"+args.outname,
-                     args.channel, args.ffout):
+                     args.channel, args.outname)
         print "combination successful"
 
         #shutil.rmtree("massOutputDir_"+args.outname)

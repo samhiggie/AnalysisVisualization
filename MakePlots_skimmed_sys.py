@@ -29,13 +29,13 @@ def add_lumi(year,doRatio=True):
     lumi.SetTextSize(0.04)
     lumi.SetTextFont (   42 )
     if year == "2016":
-        lumi.AddText(str(year)+" 35.9 fb^{-1} (13 TeV)")
+        lumi.AddText(str(year)+" 36.31 fb^{-1} (13 TeV)")
     if year == "2017":
-        lumi.AddText(str(year)+" 41.8 fb^{-1} (13 TeV)")
+        lumi.AddText(str(year)+" 41.48 fb^{-1} (13 TeV)")
     if year == "2018":
-        lumi.AddText(str(year)+" 59.7 fb^{-1} (13 TeV)")
+        lumi.AddText(str(year)+" 59.83 fb^{-1} (13 TeV)")
     if year == "RunII":
-        lumi.AddText(str(year)+" 137 fb^{-1} (13 TeV)")
+        lumi.AddText(str(year)+" 138 fb^{-1} (13 TeV)")
     return lumi
 
 def add_CMS(doRatio=True):
@@ -51,7 +51,7 @@ def add_CMS(doRatio=True):
     lumi.SetFillStyle(    0 )
     lumi.SetTextAlign(   12 )
     lumi.SetTextColor(    1 )
-    lumi.AddText("CMS")
+    lumi.AddText("CMS Preliminary")
     return lumi
 
 def add_Preliminary(channel="mmmt", doRatio=True):
@@ -68,7 +68,12 @@ def add_Preliminary(channel="mmmt", doRatio=True):
     lumi.SetFillStyle(    0 )
     lumi.SetTextAlign(   12 )
     lumi.SetTextColor(    1 )
-    lumi.AddText("Preliminary "+channel)
+    channeltext="all"
+    if channel=="mmmt":channeltext = "#mu#mu#mu#tau"
+    if channel=="mmet":channeltext = "#mu#mue#tau"
+    if channel=="mmtt":channeltext = "#mu#mu#tau#tau"
+    if channel=="mmem":channeltext = "#mu#mue#mu"
+    lumi.AddText("          "+channeltext)
     return lumi
 
 def make_legend():
@@ -158,26 +163,50 @@ def makePlotsCombined(allcats,sys,args):
         try:
             os.mkdir("outplots_"+args.output+"_"+sys)
         except:
-            print "directory exists"
-        #for variableHandle,nobrackets in vars[cat].iteritems():
+            print("directory exists")
+        #for variableHandle,nobrackets in vars[cat].items():
         cat = args.channel+"_inclusive"
-        for variableHandle in allcats[args.channel+"_inclusive"].vars.keys():
-                fin = uproot.open(args.input)
-                variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+        #for variableHandle in allcats[args.channel+"_inclusive"].vars.keys():
+        for variableHandle,nobrackets in vars[cat].items():
+                fin = uproot.open(args.input,library="np")
+                #variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                variable = nobrackets
                 if variable == "evt": continue
 
                 if variableHandle in allcats[args.channel+"_inclusive"].newvariables.keys():
                     var = variableHandle
                     bins = allcats[args.channel+"_inclusive"].newvariables[variableHandle][1]
                 else:
-                    variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
-                    if "[" in variable:
-                        basevar = variable.split("[")[0]
-                        index = int(variable.split("[")[1].split("]")[0])
-                        var = variableHandle+"_"+str(index)
-                    else:
-                        var = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
-                        bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
+                    var = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                    bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
+
+                #if variableHandle in allcats[args.channel+"_inclusive"].newvariables.keys():
+                #    var = variableHandle
+                #    bins = allcats[args.channel+"_inclusive"].newvariables[variableHandle][1]
+                #else:
+                #    variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                #    if "[" in variable:
+                #        basevar = variable.split("[")[0]
+                #        index = int(variable.split("[")[1].split("]")[0])
+                #        #val = masterArray[basevar][:,index]
+                #        #masterArray[basevar+"_"+str(index)]=val
+                #        #plottedVars.append(basevar+"_"+str(index))
+                #        #masterArray[variableHandle+"_"+str(index)]=val
+                #        #vars.append(variableHandle+"_"+str(index))
+                #        #vars[cat][variableHandle] = variableHandle+"_"+str(index)
+                #        var = variableHandle+"_"+str(index)
+                #        bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
+                #    else:
+                #        #vars[cat][variableHandle] = variableHandle
+                #        var = variableHandle
+                #        bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
+                if "[" in variable:
+                    basevar = variable.split("[")[0]
+                    index = int(variable.split("[")[1].split("]")[0])
+                    var = variableHandle+"_"+str(index)
+                else:
+                    var = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                    bins = allcats[args.channel+"_inclusive"].vars[variableHandle][1]
 
                 print("working on variable "+str(var)+" with handle "+str(variableHandle))
                 if type(bins[0])==list:
@@ -208,18 +237,22 @@ def makePlotsCombined(allcats,sys,args):
                         fileout.write("Working on category "+allcats[args.channel+"_inclusive"].name+"\n")
 
                 exit = 0  
+                print("input file keys   ",fin.keys())
                 for catLong in fin.keys():
                     cat = catLong.split(";")[0]
-                    if not "inclusive" in cat: continue
+                    #cat = catLong
+                    if (not "inclusive" in cat) or ("/" in cat): continue
+                    print("combining categories ",cat)
+                    print("signal yeild ",sum(fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")))
                     try:
-                        root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array()         , fin[cat][sys+"_"+"a40"]["finalweight"].array()           )
-                        root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array()         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array()           )
-                        root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array()       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array()         )
-                        root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array() , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array()   )
-                        root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array()     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array()       )
+                        root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array(library="np")         , fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")           )
+                        root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                        root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array(library="np")       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array(library="np")         )
+                        root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array(library="np") , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array(library="np")   )
+                        root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array(library="np")     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array(library="np")       )
                         passvars.append(var)
                     except:
-                        print "problem with var",var
+                        print("problem with var",var)
                         exit=1
                         break
                 if exit==1: 
@@ -257,8 +290,10 @@ def makePlotsCombined(allcats,sys,args):
 
                     for catLong in fin.keys():
                         cat = catLong.split(";")[0]
-                        if not "inclusive" in cat: continue
-                        root_numpy.fill_hist(hFF      ,fin[cat][sys+"_Bkg"][var].array(),fin[cat][sys+"_"+"Bkg"]["finalweight"].array() )
+                        #cat = catLong
+                        #if not "inclusive" in cat: continue
+                        if (not "inclusive" in cat) or ("/" in cat): continue
+                        root_numpy.fill_hist(hFF      ,fin[cat][sys+"_Bkg"][var].array(library="np"),fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np") )
 
                     hFF.SetTitle("Jet faking #tau")
 
@@ -270,11 +305,13 @@ def makePlotsCombined(allcats,sys,args):
 
                     for catLong in fin.keys():
                         cat = catLong.split(";")[0]
-                        if not "inclusive" in cat: continue
+                        #cat = catLong
+                        #if not "inclusive" in cat: continue
+                        if (not "inclusive" in cat) or ("/" in cat): continue
                         try:
-                            root_numpy.fill_hist(hData,fin[cat][sys+"_data_obs"][var].array(),fin[cat][sys+"_"+"data_obs"]["finalweight"].array())
+                            root_numpy.fill_hist(hData,fin[cat][sys+"_data_obs"][var].array(library="np"),fin[cat][sys+"_"+"data_obs"]["finalweight"].array(library="np"))
                         except:
-                            root_numpy.fill_hist(hData,fin[cat][sys+"_Bkg"][var].array(),fin[cat][sys+"_"+"Bkg"]["finalweight"].array())
+                            root_numpy.fill_hist(hData,fin[cat][sys+"_Bkg"][var].array(library="np"),fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np"))
 
                     hData.SetTitle("data obs")
 
@@ -551,6 +588,7 @@ def makePlotsCombined(allcats,sys,args):
                             for cut in allcats[args.channel+"_inclusive"].cuts[key]:
                                 fileout.write(str(cut))
                             fileout.write("\n")
+                        fileout.write(str(processes_special)+"\n")
                         fileout.write("signal entries "+str(hSignal.GetSumOfWeights())+"\n")
                         fileout.write("background entries "+str(hBackground.GetSumOfWeights())+"\n")
                 else:
@@ -559,6 +597,7 @@ def makePlotsCombined(allcats,sys,args):
                             for cut in allcats[args.channel+"_inclusive"].cuts[key]:
                                 fileout.write(str(cut))
                             fileout.write("\n")
+                        fileout.write(str(processes_special)+"\n")
                         nbins = hData.GetNbinsX()
                         fileout.write("data entries "+str(hData.Integral(0,nbins+1))+"\n")
                         fileout.write("background entries "+str(hbkg.Integral(0,nbins+1))+"\n")
@@ -655,23 +694,27 @@ if __name__ == "__main__":
 
     for category in categories:
         tempcat = Category()
+        try: categories[category]['name']
+        except: continue
+        #if categories[category]['name'] != "mmet_FF_SS_validation" : continue
         tempcat.name=categories[category]['name']
         tempcat.cuts=categories[category]['cuts']
         tempcat.newvariables=categories[category]['newvariables']
         tempcat.vars=categories[category]['vars']
         allcats[tempcat.name]=tempcat
 
-    print "working on categories ",allcats
+    print("working on categories ",allcats)
     newvars=[]
     variabledic={}
 
-    for newvar in  allcats[args.channel+"_inclusive"].newvariables:
-        newvars.append([newvar])
-        variabledic[newvar]=[newvar,allcats[args.channel+"_inclusive"].newvariables[newvar][1],allcats[args.channel+"_inclusive"].newvariables[newvar][3],allcats[args.channel+"_inclusive"].newvariables[newvar][4]]
-    variables = []
-    for varHandle in allcats[args.channel+"_inclusive"].vars.keys():
-        variables.append([varHandle])
-        variabledic[varHandle]=allcats[args.channel+"_inclusive"].vars[varHandle]
+    for cat in allcats.keys():
+        for newvar in  allcats[cat].newvariables:
+            newvars.append([newvar])
+            variabledic[newvar]=[newvar,allcats[cat].newvariables[newvar][1],allcats[cat].newvariables[newvar][3],allcats[cat].newvariables[newvar][4]]
+        variables = []
+        for varHandle in allcats[cat].vars.keys():
+            variables.append([varHandle])
+            variabledic[varHandle]=allcats[cat].vars[varHandle]
     #variables = variables + newvars
 
     #The skimmed root file containing all the TTrees
@@ -719,30 +762,37 @@ if __name__ == "__main__":
         
     if not args.combine:
         for cat in allcats.keys():
-            print "working on cat ",cat
+            print("working on cat ",cat)
             for sys in systematics:
                 try:
                     os.mkdir("outplots_"+args.output+"_"+sys)
                 except:
-                    print "directory exists"
-                #for variableHandle,nobrackets in vars[cat].iteritems():
-                for variableHandle in allcats[cat].vars.keys():
-                        fin = uproot.open(args.input)
-                        variable = allcats[cat].vars[variableHandle][0]
+                    print("directory exists")
+                for variableHandle,nobrackets in vars[cat].items():
+                #for variableHandle in allcats[args.channel+"_inclusive"].vars.keys():
+                #for variableHandle in allcats[cat].vars.keys():
+                        fin = uproot.open(args.input,library="np")
+                        #variable = allcats[args.channel+"_inclusive"].vars[variableHandle][0]
+                        #variable = allcats[cat].vars[variableHandle][0]
+                        variable = nobrackets
+                        #print "should be primary variable ",variable 
                         if variable == "evt": continue
 
                         if variableHandle in allcats[cat].newvariables.keys():
                             var = variableHandle
                             bins = allcats[cat].newvariables[variableHandle][1]
                         else:
-                            variable = allcats[cat].vars[variableHandle][0]
-                            if "[" in variable:
-                                basevar = variable.split("[")[0]
-                                index = int(variable.split("[")[1].split("]")[0])
-                                var = variableHandle+"_"+str(index)
-                            else:
-                                var = allcats[cat].vars[variableHandle][0]
-                                bins = allcats[cat].vars[variableHandle][1]
+                            var = allcats[cat].vars[variableHandle][0]
+                            bins = allcats[cat].vars[variableHandle][1]
+                        #else:
+                        #    var = allcats[cat].vars[variableHandle][0]
+                        #    if "[" in variable:
+                        #        basevar = variable.split("[")[0]
+                        #        index = int(variable.split("[")[1].split("]")[0])
+                        #        var = variableHandle+"_"+str(index)
+                        #    else:
+                        #        var = allcats[cat].vars[variableHandle][0]
+                        #        bins = allcats[cat].vars[variableHandle][1]
 
                         print("working on variable "+str(var)+" with handle "+str(variableHandle))
                         if type(bins[0])==list:
@@ -774,14 +824,14 @@ if __name__ == "__main__":
 
                         
                         try:
-                            root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array()         , fin[cat][sys+"_"+"a40"]["finalweight"].array()           )
-                            root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array()         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array()           )
-                            root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array()       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array()         )
-                            root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array() , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array()   )
-                            root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array()     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array()       )
+                            root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array(library="np")         , fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")           )
+                            root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                            root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array(library="np")       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array(library="np")         )
+                            root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array(library="np") , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array(library="np")   )
+                            root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array(library="np")     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array(library="np")       )
                             passvars.append(var)
                         except:
-                            print "problem with var",var
+                            print("problem with var",var)
                             continue
 
 
@@ -800,9 +850,9 @@ if __name__ == "__main__":
                         h3alphBackground.SetFillColor(ROOT.TColor.GetColor("#FF6600"))
 
                         hBackground.SetTitle("DY+Jets, T#bar{T}, ST , EWK")
-                        hirBackground.SetTitle("ZZ or ZH to 4l")
+                        hirBackground.SetTitle("ZZ to 4l")
                         h3alphBackground.SetTitle("3 #alpha")
-                        hrareBackground.SetTitle("TTXX, WZ to Inv, 4#alpha")
+                        hrareBackground.SetTitle("GluGlu 4l")
                         hSignal.SetTitle("Signal a 40")
 
                         hBkgTot = ROOT.THStack()
@@ -978,8 +1028,16 @@ if __name__ == "__main__":
 
                             
 
-                        hSignal.GetXaxis().SetTitle(variabledic[variableHandle][3]+variabledic[variableHandle][2])
-                        hSignal.GetYaxis().SetTitle("Events")
+                        try:
+                            hSignal.GetXaxis().SetTitle(variabledic[variableHandle][3]+variabledic[variableHandle][2])
+                            hSignal.GetYaxis().SetTitle("Events")
+                        except:
+                            #print variabledic[variableHandle]
+                            hData.GetXaxis().SetTitle(variabledic[variableHandle][3]+variabledic[variableHandle][2])
+                            hData.GetYaxis().SetTitle("Events")
+                            hBkgTot.GetXaxis().SetTitle(variabledic[variableHandle][3]+variabledic[variableHandle][2])
+                            hBkgTot.GetYaxis().SetTitle("Events")
+
 
                         if not args.mc:
                             hData.SetTitle("")
@@ -1012,6 +1070,7 @@ if __name__ == "__main__":
                         else:
                             if(hBkgTot.GetMaximum() > hSignal.GetMaximum()):
                                 hBkgTot.Draw("HIST")
+                                print("background max",hBkgTot.GetMaximum())
                                 hBkgTot.GetYaxis().SetRangeUser(hBkgTot.GetMinimum()*1.25,hBkgTot.GetMaximum()*1.25)
                                 hBkgTot.GetXaxis().SetTitle(str(variabledic[variableHandle][3])+str(variabledic[variableHandle][2]))
                                 hBkgTot.GetYaxis().SetTitle("Events")
@@ -1098,6 +1157,7 @@ if __name__ == "__main__":
                                     for cut in allcats[cat].cuts[key]:
                                         fileout.write(str(cut))
                                     fileout.write("\n")
+                                fileout.write(str(processes_special)+"\n")
                                 fileout.write("signal entries "+str(hSignal.GetSumOfWeights())+"\n")
                                 fileout.write("background entries "+str(hBackground.GetSumOfWeights())+"\n")
                         else:
@@ -1107,6 +1167,7 @@ if __name__ == "__main__":
                                         fileout.write(str(cut))
                                     fileout.write("\n")
                                 nbins = hData.GetNbinsX()
+                                fileout.write(str(processes_special)+"\n")
                                 fileout.write("data entries "+str(hData.Integral(0,nbins+1))+"\n")
                                 fileout.write("background entries "+str(hbkg.Integral(0,nbins+1))+"\n")
 
