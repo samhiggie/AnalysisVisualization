@@ -246,7 +246,9 @@ def makePlotsCombined(allcats,sys,args):
                     print("signal yeild ",sum(fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")))
                     try:
                         root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array(library="np")         , fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")           )
-                        root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                        #root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                        #systematic shifts not applied to fake rate reducible background
+                        root_numpy.fill_hist(hBackground      ,fin[cat]["Nominal_Bkg"][var].array(library="np")         , fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np")           )
                         root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array(library="np")       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array(library="np")         )
                         root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array(library="np") , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array(library="np")   )
                         root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array(library="np")     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array(library="np")       )
@@ -293,7 +295,7 @@ def makePlotsCombined(allcats,sys,args):
                         #cat = catLong
                         #if not "inclusive" in cat: continue
                         if (not "inclusive" in cat) or ("/" in cat): continue
-                        root_numpy.fill_hist(hFF      ,fin[cat][sys+"_Bkg"][var].array(library="np"),fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np") )
+                        root_numpy.fill_hist(hFF      ,fin[cat]["Nominal_Bkg"][var].array(library="np"),fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np") )
 
                     hFF.SetTitle("Jet faking #tau")
 
@@ -311,7 +313,7 @@ def makePlotsCombined(allcats,sys,args):
                         try:
                             root_numpy.fill_hist(hData,fin[cat][sys+"_data_obs"][var].array(library="np"),fin[cat][sys+"_"+"data_obs"]["finalweight"].array(library="np"))
                         except:
-                            root_numpy.fill_hist(hData,fin[cat][sys+"_Bkg"][var].array(library="np"),fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np"))
+                            root_numpy.fill_hist(hData,fin[cat]["Nominal_Bkg"][var].array(library="np"),fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np"))
 
                     hData.SetTitle("data obs")
 
@@ -751,10 +753,49 @@ if __name__ == "__main__":
             vars[cat][newvar]=newvar
 
 
-        #for ivar,var in enumerate(cat.vars.keys()):
-        #for dist in fin.GetListOfKeys():
-        systematics = ["Nominal"]
+        #legacy 
         #systematics =[ "Nominal","scale_eUp","scale_eDown","scale_m_etalt1p2Up","scale_m_etalt1p2Down","scale_m_eta1p2to2p1Up","scale_m_eta1p2to2p1Down","scale_m_etagt2p1Up","scale_m_etagt2p1Down","scale_t_1prongUp","scale_t_1prongDown","scale_t_1prong1pizeroUp","scale_t_1prong1pizeroDown","scale_t_3prongUp","scale_t_3prongDown","scale_t_3prong1pizeroUp","scale_t_3prong1pizeroDown"]
+
+        #systematics = ["Nominal"]
+        systematics = [
+        #'Nominal',
+        'scale_tUp',
+        'scale_mUp',
+        'scale_eUp',
+        #mmtt
+        'scale_t_1prong_TauLoose_MuoVLoose_EleVLooseUp',
+        'scale_t_1prong1pizero_TauLoose_MuoVLoose_EleVLooseUp',
+        'scale_t_3prong_TauLoose_MuoVLoose_EleVLooseUp',
+        'scale_t_3prong1pizero_TauLoose_MuoVLoose_EleVLooseUp',
+        #mmmt
+        'scale_t_1prong_TauLoose_MuoTight_EleVLooseUp',
+        'scale_t_1prong1pizero_TauLoose_MuoTight_EleVLooseUp',
+        'scale_t_3prong_TauLoose_MuoTight_EleVLooseUp',
+        'scale_t_3prong1pizero_TauLoose_MuoTight_EleVLooseUp',
+        #mmet
+        'scale_t_1prong_TauMedium_MuoVLoose_EleVTightUp',
+        'scale_t_1prong1pizero_TauMedium_MuoVLoose_EleVTightUp',
+        'scale_t_3prong_TauMedium_MuoVLoose_EleVTightUp',
+        'scale_t_3prong1pizero_TauMedium_MuoVLoose_EleVTightUp',
+        'scale_tDown',
+        'scale_mDown',
+        'scale_eDown',
+        #mmtt
+        'scale_t_1prong_TauLoose_MuoVLoose_EleVLooseDown',
+        'scale_t_1prong1pizero_TauLoose_MuoVLoose_EleVLooseDown',
+        'scale_t_3prong_TauLoose_MuoVLoose_EleVLooseDown',
+        'scale_t_3prong1pizero_TauLoose_MuoVLoose_EleVLooseDown',
+        #mmmt
+        'scale_t_1prong_TauLoose_MuoTight_EleVLooseDown',
+        'scale_t_1prong1pizero_TauLoose_MuoTight_EleVLooseDown',
+        'scale_t_3prong_TauLoose_MuoTight_EleVLooseDown',
+        'scale_t_3prong1pizero_TauLoose_MuoTight_EleVLooseDown',
+        #mmet
+        'scale_t_1prong_TauMedium_MuoVLoose_EleVTightDown',
+        'scale_t_1prong1pizero_TauMedium_MuoVLoose_EleVTightDown',
+        'scale_t_3prong_TauMedium_MuoVLoose_EleVTightDown',
+        'scale_t_3prong1pizero_TauMedium_MuoVLoose_EleVTightDown',
+        ]
 
     if args.combine:
         print("running combined")
@@ -825,7 +866,8 @@ if __name__ == "__main__":
                         
                         try:
                             root_numpy.fill_hist(hSignal          ,fin[cat][sys+"_"+"a40"][var].array(library="np")         , fin[cat][sys+"_"+"a40"]["finalweight"].array(library="np")           )
-                            root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                            #root_numpy.fill_hist(hBackground      ,fin[cat][sys+"_"+"Bkg"][var].array(library="np")         , fin[cat][sys+"_"+"Bkg"]["finalweight"].array(library="np")           )
+                            root_numpy.fill_hist(hBackground      ,fin[cat]["Nominal_Bkg"][var].array(library="np")         , fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np")           )
                             root_numpy.fill_hist(hirBackground    ,fin[cat][sys+"_"+"irBkg"][var].array(library="np")       , fin[cat][sys+"_"+"irBkg"]["finalweight"].array(library="np")         )
                             root_numpy.fill_hist(h3alphBackground ,fin[cat][sys+"_"+"TrialphaBkg"][var].array(library="np") , fin[cat][sys+"_"+"TrialphaBkg"]["finalweight"].array(library="np")   )
                             root_numpy.fill_hist(hrareBackground  ,fin[cat][sys+"_"+"rareBkg"][var].array(library="np")     , fin[cat][sys+"_"+"rareBkg"]["finalweight"].array(library="np")       )
@@ -862,7 +904,7 @@ if __name__ == "__main__":
 
                         if args.datadrivenZH:
 
-                            root_numpy.fill_hist(hFF      ,fin[cat][sys+"_Bkg"][var].array(),fin[cat][sys+"_"+"Bkg"]["finalweight"].array() )
+                            root_numpy.fill_hist(hFF      ,fin[cat]["Nominal_Bkg"][var].array(library="np"),fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np") )
 
                             hFF.SetTitle("Jet faking #tau")
 
@@ -872,9 +914,9 @@ if __name__ == "__main__":
 
                         if not args.mc:
                             try:
-                                root_numpy.fill_hist(hData,fin[cat][sys+"_data_obs"][var].array(),fin[cat][sys+"_"+"data_obs"]["finalweight"].array())
+                                root_numpy.fill_hist(hData,fin[cat][sys+"_data_obs"][var].array(library="np"),fin[cat][sys+"_"+"data_obs"]["finalweight"].array(library="np"))
                             except:
-                                root_numpy.fill_hist(hData,fin[cat][sys+"_Bkg"][var].array(),fin[cat][sys+"_"+"Bkg"]["finalweight"].array())
+                                root_numpy.fill_hist(hData,fin[cat]["Nominal_Bkg"][var].array(library="np"),fin[cat]["Nominal_Bkg"]["finalweight"].array(library="np"))
 
                             hData.SetTitle("data obs")
 

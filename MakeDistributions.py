@@ -596,8 +596,8 @@ def initialize(args):
                 temppro.file=dir+sample+"_"+args.year+".root"
 
                 frooin = ROOT.TFile.Open(temppro.file,"read")
-                #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
-                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"weight"}
+                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
+                #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"weight"}
                 temppro.cuts={sampleDict[sample][0]:""}
                 if "ggTo2mu2tau" in sample:
                     #if args.year==2016: nevents = 250000
@@ -605,14 +605,14 @@ def initialize(args):
                     #if args.year==2017: nevents = 500000
                     if args.extract:
                         #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
-                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
-                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
                         #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"}
 
                     else:
                         #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
-                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
-                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # worked before
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # worked before
                         #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"}
 
                     #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001*5.0)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
@@ -626,8 +626,8 @@ def initialize(args):
                 #temppro.file=sample+"_2016.root"
                 #temppro.file=dir+sample+"_2016.root"
                 temppro.file=dir+sample+"_"+args.year+".root"
-                #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
-                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"weight"}
+                temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"Generator_weight"}
+                #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"PU":"weightPUtrue","genweight":"weight"}
                 if args.channel=="mmtt":
                     #truetau = [
                     #            [["OR"],
@@ -663,14 +663,14 @@ def initialize(args):
                     #for visualization!
                     if args.extract:
                         #temppro.weights={"xsec":1,"nevents":250000,"theoryXsec":(48.37*0.0001)} # SM Higgs xsec x BR Haa x 5 for DataMC control plots
-                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
-                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # SM Higgs xsec [pb] x BR Haa x 5 for DataMC control plots
                         #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"}
 
                     else:
                         #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(137.5*31.05*0.00005)} # worked before
-                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
-                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # worked before
+                        temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"} # worked before
+                        #temppro.weights={"xsec":1,"nevents":nevents,"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"weight"} # worked before
                         #temppro.weights={"xsec":sampleDict[sample][1],"nevents":sampleDict[sample][3],"theoryXsec":(48.37*0.001),"PU":"weightPUtrue","genweight":"Generator_weight"}
                 HAA_processes[temppro.nickname]=temppro
 
